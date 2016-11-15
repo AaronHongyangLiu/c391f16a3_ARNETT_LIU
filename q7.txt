@@ -1,0 +1,1 @@
+Maybe we should have indices on the subject and predicate columns since they have redundancy?

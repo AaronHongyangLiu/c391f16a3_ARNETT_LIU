@@ -1,0 +1,233 @@
+@prefix rdf:	<http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix dbr:	<http://dbpedia.org/resource/> .
+@prefix yago:	<http://dbpedia.org/class/yago/> .
+dbr:Edmonton	rdf:type	yago:WikicatTownsInAlberta ,
+		yago:Town108665504 ,
+		yago:GeographicalArea108574314 .
+@prefix wikidata:	<http://www.wikidata.org/entity/> .
+dbr:Edmonton	rdf:type	wikidata:Q486972 ,
+		yago:Artifact100021939 ,
+		yago:Municipality108626283 .
+@prefix dbo:	<http://dbpedia.org/ontology/> .
+dbr:Edmonton	rdf:type	dbo:City ,
+		dbo:PopulatedPlace ,
+		wikidata:Q515 ,
+		yago:AdministrativeDistrict108491826 ,
+		yago:Way104564698 ,
+		yago:WikicatRoadsInEdmonton ,
+		yago:PhysicalEntity100001930 ,
+		yago:Object100002684 ,
+		dbo:Settlement .
+@prefix umbel-rc:	<http://umbel.org/umbel/rc/> .
+dbr:Edmonton	rdf:type	umbel-rc:City ,
+		yago:WikicatPopulatedPlacesEstablishedIn1795 .
+@prefix geo:	<http://www.w3.org/2003/01/geo/wgs84_pos#> .
+dbr:Edmonton	rdf:type	geo:SpatialThing ,
+		yago:YagoGeoEntity ,
+		yago:YagoPermanentlyLocatedEntity ,
+		yago:UrbanArea108675967 ,
+		yago:YagoLegalActorGeo ,
+		yago:Whole100003553 ,
+		yago:Location100027167 ,
+		yago:Road104096066 .
+@prefix schema:	<http://schema.org/> .
+dbr:Edmonton	rdf:type	schema:City ,
+		schema:Place ,
+		umbel-rc:Location_Underspecified .
+@prefix owl:	<http://www.w3.org/2002/07/owl#> .
+dbr:Edmonton	rdf:type	owl:Thing ,
+		umbel-rc:PopulatedPlace ,
+		dbo:Place ,
+		yago:District108552138 ,
+		yago:Region108630985 ,
+		yago:Tract108673395 ,
+		yago:Site108651247 ,
+		yago:WikicatPopulatedPlacesEstablishedIn1904 ,
+		dbo:Location ,
+		umbel-rc:Village ;
+	owl:sameAs	<http://yago-knowledge.org/resource/82_Street,_Edmonton> ,
+		<http://gadm.geovocab.org/id/3_14260> .
+@prefix dbpedia-cs:	<http://cs.dbpedia.org/resource/> .
+dbr:Edmonton	owl:sameAs	dbpedia-cs:Edmonton .
+@prefix dbpedia-nl:	<http://nl.dbpedia.org/resource/> .
+dbr:Edmonton	owl:sameAs	dbpedia-nl:Edmonton .
+@prefix dbpedia-ko:	<http://ko.dbpedia.org/resource/> .
+dbr:Edmonton	owl:sameAs	dbpedia-ko:에드먼턴 .
+@prefix dbpedia-de:	<http://de.dbpedia.org/resource/> .
+dbr:Edmonton	owl:sameAs	dbpedia-de:Edmonton .
+@prefix dbpedia-es:	<http://es.dbpedia.org/resource/> .
+dbr:Edmonton	owl:sameAs	dbpedia-es:Edmonton ,
+		<http://sws.geonames.org/5946768/> ,
+		<http://data.nytimes.com/75177843852863780571> ,
+		<http://rdf.freebase.com/ns/m.0nlh7> ,
+		<http://yago-knowledge.org/resource/17_Street,_Edmonton> ,
+		<http://yago-knowledge.org/resource/17_Street_NW,_Edmonton> .
+@prefix dbpedia-el:	<http://el.dbpedia.org/resource/> .
+dbr:Edmonton	owl:sameAs	dbpedia-el:Έντμοντον .
+@prefix ns15:	<http://linked-web-apis.fit.cvut.cz/resource/> .
+dbr:Edmonton	owl:sameAs	ns15:edmonton_city .
+@prefix yago-res:	<http://yago-knowledge.org/resource/> .
+dbr:Edmonton	owl:sameAs	yago-res:Edmonton ,
+		yago-res:Hayter_Road .
+@prefix dbpedia-ja:	<http://ja.dbpedia.org/resource/> .
+dbr:Edmonton	owl:sameAs	dbpedia-ja:エドモントン ,
+		wikidata:Q2096 .
+@prefix dbpedia-it:	<http://it.dbpedia.org/resource/> .
+dbr:Edmonton	owl:sameAs	dbpedia-it:Edmonton .
+@prefix dbpedia-fr:	<http://fr.dbpedia.org/resource/> .
+dbr:Edmonton	owl:sameAs	dbpedia-fr:Edmonton .
+@prefix dbpedia-wikidata:	<http://wikidata.dbpedia.org/resource/> .
+dbr:Edmonton	owl:sameAs	dbpedia-wikidata:Q2096 .
+@prefix dbpedia-eu:	<http://eu.dbpedia.org/resource/> .
+dbr:Edmonton	owl:sameAs	dbpedia-eu:Edmonton .
+@prefix dbpedia-pl:	<http://pl.dbpedia.org/resource/> .
+dbr:Edmonton	owl:sameAs	dbpedia-pl:Edmonton ,
+		<http://yago-knowledge.org/resource/159_Street,_Edmonton> .
+@prefix lgdt:	<http://linkedgeodata.org/triplify/> .
+dbr:Edmonton	owl:sameAs	lgdt:node29811182 .
+@prefix dbpedia-pt:	<http://pt.dbpedia.org/resource/> .
+dbr:Edmonton	owl:sameAs	dbpedia-pt:Edmonton .
+@prefix dbpedia-id:	<http://id.dbpedia.org/resource/> .
+dbr:Edmonton	owl:sameAs	dbpedia-id:Edmonton ,
+		<http://yago-knowledge.org/resource/184_Street,_Edmonton> .
+@prefix dct:	<http://purl.org/dc/terms/> .
+@prefix dbc:	<http://dbpedia.org/resource/Category:> .
+dbr:Edmonton	dct:subject	dbc:Populated_places_established_in_1904 ,
+		dbc:Populated_places_established_in_1795 ,
+		<http://dbpedia.org/resource/Category:1892_establishments_in_Alberta> ,
+		dbc:Cities_in_Alberta ,
+		<http://dbpedia.org/resource/Category:Hudson\u0027s_Bay_Company_trading_posts> ,
+		dbc:Edmonton ;
+	dbo:wikiPageID	95405 ;
+	dbo:wikiPageRevisionID	707172541 ;
+	dbo:wikiPageExternalLink	<http://books.google.ca/books?id=Hfjefyb5LYEC&lpg=PA49&dq=Edmonton&pg=PP1#v=onepage&q&f=true> ,
+		<http://books.google.ca/books?id=mJbVhqvY7TsC&lpg=PP1&dq=Edmonton&pg=PP1#v=onepage&q&f=true> ,
+		<http://books.google.ca/books?id=JWWo___pkQUC&lpg=PP1&dq=Edmonton&pg=PP1#v=onepage&q&f=true> ,
+		<http://www.amazon.ca/Edmonton-Secrets-City-Charlene-Rooke/dp/1551521032> ,
+		<http://www.macintyrepurcell.com/book-of-everything/edmonton-book-of-everything.html> ,
+		<http://www.edmonton.ca> .
+@prefix dbp:	<http://dbpedia.org/property/> .
+dbr:Edmonton	dbp:areaCode	780587 .
+@prefix xsd:	<http://www.w3.org/2001/XMLSchema#> .
+dbr:Edmonton	dbp:areaMetroKm	9426.7299999999995634 ;
+	dbp:areaTotalKm	684.37000000000000455 ;
+	dbp:elevationM	645 ;
+	dbp:establishedDate	"1904-10-08"^^xsd:date ,
+		"1892-01-09"^^xsd:date ;
+	dbp:leaderName	dbr:Edmonton_City_Council ,
+		dbr:Don_Iveson ;
+	dbp:leaderTitle	"Manager"@en ,
+		"Governing body"@en ,
+		dbr:Legislative_Assembly_of_Alberta ,
+		dbr:List_of_House_members_of_the_42nd_Parliament_of_Canada ,
+		"Mayor"@en ;
+	dbp:motto	"Industry, Integrity, Progress"@en ;
+	dbp:nickname	"Canada's Festival City, City of Champions, The Oil Capital of Canada (more...)"@en ;
+	dbp:officialName	"City of Edmonton"@en ;
+	dbp:populationDensityKm	1186.7999999999999545 ;
+	dbp:populationDensityMetroKm	123 ;
+	dbp:populationMetro	1159869 ;
+	dbp:populationTotal	812201 ;
+	dbp:populationUrban	960015 ;
+	dbp:postalCode	dbr:List_of_T_postal_codes_of_Canada ;
+	dbp:settlementType	"City"@en ;
+	dbp:subdivisionName	dbr:Canada ,
+		dbr:Edmonton_Capital_Region ,
+		11 ,
+		dbr:Alberta ;
+	dbp:timezone	dbr:Mountain_Time_Zone ;
+	dbp:timezoneDst	dbr:Mountain_Time_Zone ;
+	dbp:twin	dbr:Twin_towns_and_sister_cities ;
+	dbp:twin1Country	dbr:Quebec ,
+		dbr:Harbin ,
+		dbr:South_Korea ,
+		dbr:China ,
+		dbr:Gatineau ,
+		dbr:Wonju ,
+		<http://dbpedia.org/resource/Nashville,_Tennessee> ;
+	dbp:utcOffset	"\u22127"@en ;
+	dbp:utcOffsetDst	"\u22126"@en .
+@prefix rdfs:	<http://www.w3.org/2000/01/rdf-schema#> .
+dbr:Edmonton	rdfs:label	"Edmonton"@it ,
+		"Edmonton"@en ,
+		"Edmonton"@es ,
+		"Edmonton"@de ,
+		"\u0625\u062F\u0645\u0648\u0646\u062A\u0648\u0646"@ar ,
+		"Edmonton"@fr ,
+		"\u042D\u0434\u043C\u043E\u043D\u0442\u043E\u043D"@ru ,
+		"\u57C3\u5FB7\u8499\u987F"@zh ,
+		"Edmonton"@pl ,
+		"Edmonton"@pt ,
+		"Edmonton"@nl ,
+		"\u30A8\u30C9\u30E2\u30F3\u30C8\u30F3"@ja ;
+	rdfs:seeAlso	dbr:Economy_of_Alberta ,
+		dbr:The_Edmonton_Capital_Region ,
+		dbr:List_of_neighbourhoods ,
+		dbr:List_of_airports ,
+		dbr:Landmark ,
+		dbr:Edmonton ,
+		dbr:List_of_attractions ,
+		dbr:North_Saskatchewan_River_valley_parks_system .
+@prefix foaf:	<http://xmlns.com/foaf/0.1/> .
+dbr:Edmonton	foaf:name	"City of Edmonton"@en ,
+		"Edmonton"@en ;
+	foaf:nick	"Canada's Festival City, City of Champions, The Oil Capital of Canada (more...)"@en ;
+	foaf:homepage	<http://www.edmonton.ca> ;
+	dbp:name	"Edmonton"@en ;
+	geo:lat	"53.53333282470703125"^^xsd:float ;
+	geo:long	"-113.5"^^xsd:float ;
+	foaf:depiction	<http://commons.wikimedia.org/wiki/Special:FilePath/Edmontonmontage1.jpg> .
+@prefix wikipedia-en:	<http://en.wikipedia.org/wiki/> .
+dbr:Edmonton	foaf:isPrimaryTopicOf	wikipedia-en:Edmonton .
+@prefix virtrdf:	<http://www.openlinksw.com/schemas/virtrdf#> .
+dbr:Edmonton	geo:geometry	"POINT(-113.5 53.533332824707)"^^virtrdf:Geometry ;
+	dbo:thumbnail	<http://commons.wikimedia.org/wiki/Special:FilePath/Edmontonmontage1.jpg?width=300> .
+@prefix prov:	<http://www.w3.org/ns/prov#> .
+dbr:Edmonton	prov:wasDerivedFrom	<http://en.wikipedia.org/wiki/Edmonton?oldid=707172541> .
+@prefix ns35:	<http://dbpedia.org/datatype/> .
+@prefix ns36:	<http://dbpedia.org/ontology/PopulatedPlace/> .
+dbr:Edmonton	ns36:areaMetro	"9426.73"^^ns35:squareKilometre ;
+	ns36:areaTotal	"684.37"^^ns35:squareKilometre ;
+	ns36:populationDensity	"1186.8"^^ns35:inhabitantsPerSquareKilometre ;
+	ns36:populationMetroDensity	"123.0"^^ns35:inhabitantsPerSquareKilometre ;
+	dbo:areaCode	"780,587" ;
+	dbo:areaMetro	9426730000.0 ;
+	dbo:areaTotal	684370000.0 ;
+	dbo:country	dbr:Canada ;
+	dbo:elevation	645.0 ;
+	dbo:foundingDate	"1904-10-08"^^xsd:date ,
+		"1892-01-09"^^xsd:date ;
+	dbo:isPartOf	dbr:Edmonton_Capital_Region ,
+		dbr:Alberta ,
+		<http://dbpedia.org/resource/Division_No._11,_Alberta> ;
+	dbo:leaderName	dbr:Don_Iveson ,
+		dbr:List_of_mayors_of_Edmonton ,
+		dbr:Edmonton_City_Council ;
+	dbo:leaderTitle	"MPs"@en ,
+		"Manager"@en ,
+		"MLAs"@en ,
+		"Mayor"@en ,
+		"Governing body"@en ;
+	dbo:motto	"Industry, Integrity, Progress" ;
+	dbo:populationDensity	1186.7999999999999545 ;
+	dbo:populationMetro	"1159869"^^xsd:nonNegativeInteger ;
+	dbo:populationMetroDensity	123.0 ;
+	dbo:populationTotal	"812201"^^xsd:nonNegativeInteger ;
+	dbo:populationUrban	"960015"^^xsd:nonNegativeInteger ;
+	dbo:postalCode	"T5A to T6Z" ;
+	dbo:timeZone	dbr:Mountain_Time_Zone ;
+	dbo:twinCountry	dbr:Quebec ,
+		dbr:Wonju ,
+		dbr:China ,
+		<http://dbpedia.org/resource/Nashville,_Tennessee> ,
+		dbr:South_Korea ,
+		dbr:Harbin ,
+		dbr:Gatineau ;
+	dbo:twinTown	dbr:Twin_towns_and_sister_cities ;
+	dbo:type	dbr:List_of_cities_in_Alberta ;
+	dbo:utcOffset	"\u22127" ,
+		"\u22126" .
+@prefix georss:	<http://www.georss.org/georss/> .
+dbr:Edmonton	georss:point	"53.53333333333333 -113.5" .
+@prefix ns38:	<http://purl.org/voc/vrank#> .
+dbr:Edmonton	ns38:hasRank	_:b27527865 .
