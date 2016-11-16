@@ -2,14 +2,16 @@ import sqlite3  # https://docs.python.org/2/library/sqlite3.html
 import sys
 import re
 
+# TODO make sure new predicates under same subject are handled. in the ";" logic
+
 PREFIX_URL = {}
+db = None
 
 STATE = {
-    'IN_SUBJECT' : False,
-    'IN_PREDICATE' : False,
-    'IN_OBJECT' : False
+    'SAME_SUBJECT': False,
+    'SAME_PREDICATE': False,
+    'SAME_OBJECT': False
 }
-
 
 
 def main():
@@ -17,20 +19,20 @@ def main():
         print "Usage: python q8.py <database file> <RDF input file>"
         sys.exit()
 
-    # database = sqlite3.connect(sys.argv[1])
-    # cursor = database.cursor()
+    # db = sqlite3.connect(sys.argv[1])
+    # cursor = db.cursor()
 
     infile = open(sys.argv[2], 'r')  # read the RDF data file
     input_lines = infile.readlines()
     infile.close()
 
     # parse_file(database, input_lines)
-    parse_file("DEBUGGING WITHOUT DB", input_lines)
+    parse_file(input_lines)
 
     # db.close()
 
 
-def parse_file(db, lines):
+def parse_file(lines):
     """
     parses lines of the file for insertion to the database
     param db: the database instance
@@ -45,45 +47,65 @@ def parse_file(db, lines):
         prefix = re.search("(?:)@prefix(.*)", line)  # https://docs.python.org/2/howto/regex.html
         if prefix:
             add_prefix(prefix)
-            continue # go to next line
+            continue  # go to next line
         line_contents = line.split('\t')
 
-
-
-
-        # if not STATE['IN_SUBJECT']: # Then new triple
         if line_contents[0] != '':  # then subject field available
-            subject = generate_attribute(line_contents[0])
-            STATE['IN_SUBJECT'] = True
-            predicate = generate_attribute(line_contents[1])
+            predicate, subject = get_attributes(line_contents, predicate=None, subject=None)
 
-            if line_contents[2][-2] == ',':
-                object_with_prefix = re.search("^[^,]*",line_contents[2]).group() # regex from http://stackoverflow.com/questions/19142042/python-regex-to-get-everything-until-the-first-dot-in-a-string
-                object = generate_attribute(object_with_prefix)
-                insert_triple(db, subject, predicate, object)
-            if line_contents[2][-2] == '.': # -2 index because last character is newline character
-                object_with_prefix = re.search("^[^.]*", line_contents[
-                    2]).group()  # regex from http://stackoverflow.com/questions/19142042/python-regex-to-get-everything-until-the-first-dot-in-a-string
-                object = generate_attribute(object_with_prefix)
-                insert_triple(db, subject, predicate, object)
-                subject = None
-                predicate = None
-                object = None
         elif line_contents[0] == '' and line_contents[1] == '' and subject and predicate:
-            object_with_prefix = re.search("^[^,]*", line_contents[
-                2]).group()  # regex from http://stackoverflow.com/questions/19142042/python-regex-to-get-everything-until-the-first-dot-in-a-string
-            object = generate_attribute(object_with_prefix)
-            insert_triple(db, subject, predicate, object)
+            predicate, subject = get_attributes(line_contents, predicate, subject)
+            # object_with_prefix = re.search("^[^,]*", line_contents[
+            #     2]).group()  # regex from http://stackoverflow.com/questions/19142042/python-regex-to-get-everything-until-the-first-dot-in-a-string
+            # object = translate_tag(object_with_prefix)
+            # insert_triple(subject, predicate, object)
 
 
 
-        # if STATE['IN_SUBJECT']:
-        #     print line_contents
+            # if STATE['IN_SUBJECT']:
+            #     print line_contents
 
 
+def get_attributes(line_contents, predicate, subject):
+    if not subject:
+        subject = translate_tag(line_contents[0])
+        STATE['SAME_SUBJECT'] = True
+        predicate = translate_tag(line_contents[1])
+
+    end_line_token = line_contents[2][-2]  # -2 index because last character is newline character
+    if end_line_token == ',':  # new object under same predicate and subject
+        object_with_prefix = re.search("^[^,]*", line_contents[
+            2]).group()  # regex from http://stackoverflow.com/questions/19142042/python-regex-to-get-everything-until-the-first-dot-in-a-string
+
+    elif end_line_token == '.':
+        object_with_prefix = re.search("^[^.]*", line_contents[
+            2]).group()
+        STATE['SAME_SUBJECT'] = False
+
+    elif end_line_token == ';':  # new predicate
+        object_with_prefix = re.search("^[^;]*", line_contents[
+            2]).group()
+        STATE['SAME_PREDICATE'] = False
+        predicate = None
+        object = None
+
+    if ":" in object_with_prefix:
+        object = translate_tag(object_with_prefix)
+    else: # Then we do not have a url
+        object = object_with_prefix
+
+    insert_triple(subject, predicate, object)
+    if not STATE['SAME_SUBJECT']:
+        subject = None
+        predicate = None
+        object = None
+    if not STATE['SAME_PREDICATE']:
+        predicate = None
+        object = None
+    return predicate, subject
 
 
-def generate_attribute(tag):
+def translate_tag(tag):
     """
     generates the text that will be saved in database
     :param tag: example -->  dbr:Edmonton
@@ -94,6 +116,7 @@ def generate_attribute(tag):
     result = "%s%s" % (PREFIX_URL[tag_contents[0]], tag_contents[1])
     return result
 
+
 def add_prefix(prefix):
     prefix_contents = prefix.group(1).split('\t')
 
@@ -103,7 +126,8 @@ def add_prefix(prefix):
 
     PREFIX_URL[prefix_contents[0].strip()[:-1]] = url  # Add to the PREFIX_URL dictionary
 
-def insert_triple(db, subject, predicate, object):
+
+def insert_triple(subject, predicate, object):
     print '\n'
 
     print subject
@@ -113,6 +137,7 @@ def insert_triple(db, subject, predicate, object):
 
     # TODO insert into the DB
     return
+
 
 # def new_triple():
 #     """
