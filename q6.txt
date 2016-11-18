@@ -2,10 +2,17 @@ The database schema will hold only one table called graph_data.
 This table will have four attributes;
   1. subject
   2. predicate
+<<<<<<< HEAD
   3. object 
   4. objectType
+=======
+  3. object
+  4. type
+>>>>>>> 123c2a3203b58d972a87514eec7d0706df6ca234
 
   SQL statements:
+
+CREATE TABLE graph_data (subject text, predicate text, object text, type text);
 
 CREATE TABLE graph_data (
   subject text,
