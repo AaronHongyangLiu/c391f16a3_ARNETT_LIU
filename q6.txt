@@ -2,14 +2,18 @@ The database schema will hold only one table called graph_data.
 This table will have three attributes;
   1. subject
   2. predicate
-  3. object 
+  3. object
+  4. type
 
   SQL statements:
+
+CREATE TABLE graph_data (subject text, predicate text, object text, type text);
 
 CREATE TABLE graph_data (
   subject text,
   predicate text,
-  object text
+  object text,
+  type text
 );
 
 The strategy is that we will parse the RDF data file, and each triple will be a

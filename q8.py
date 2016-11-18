@@ -4,15 +4,14 @@ import re
 
 """
 TODO:
-- regex to remove from "." causes objects with "." in them to be invalid. Example: dbr:Edmonton	georss:point	"53.53333333333333 -113.5" .
-- must determine types in line 160
 - ignore non @en lines
+- error checking
+- decide what to do with blank nodes
 
 """
 
-
 PREFIX_URL = {}
-db = None
+DB_DATA = []
 
 STATE = {
     'SAME_SUBJECT': False,
@@ -26,34 +25,32 @@ def main():
         print "Usage: python q8.py <database file> <RDF input file>"
         sys.exit()
 
-    # db = sqlite3.connect(sys.argv[1])
-    # cursor = db.cursor()
-
+    db = sqlite3.connect(sys.argv[1])
+    db.text_factory = str
     infile = open(sys.argv[2], 'r')  # read the RDF data file
     input_lines = infile.readlines()
     infile.close()
 
-    # parse_file(database, input_lines)
     parse_file(input_lines)
 
-    # db.close()
+    insert_data(db)
+    db.close()
 
 
 def parse_file(lines):
     """
     parses lines of the file for insertion to the database
-    param db: the database instance
     param lines: the list of lines read from RDF data file
     """
 
-    # initialize statements to false
+    # Initialization
     subject = None
     predicate = None
     object = None
-    type = None
+    obj_type = None
 
     for line in lines:
-        # check if prefix line
+        # check if @prefix line
         prefix = re.search("(?:)@prefix(.*)", line)  # https://docs.python.org/2/howto/regex.html
         if prefix:
             add_prefix(prefix)
@@ -63,17 +60,20 @@ def parse_file(lines):
 
         # generate new triple without any existing context
         if line_contents[0] != '':
-            subject, predicate, object, type = get_attributes(line_contents, predicate=None, subject=None)
+            subject, predicate, object, obj_type = get_attributes(line_contents, predicate=None, subject=None)
 
         # generate triple with existing subject and predicate
         elif line_contents[0] == '' and line_contents[1] == '' and STATE['SAME_SUBJECT'] and STATE['SAME_PREDICATE']:
-            subject, predicate, object, type = get_attributes(line_contents, predicate=predicate, subject=subject)
+            subject, predicate, object, obj_type = get_attributes(line_contents, predicate=predicate, subject=subject)
 
         # genereate triple with existing subject but new predicate
-        elif line_contents[0] == '' and line_contents[1] != '' and STATE['SAME_SUBJECT'] and not STATE['SAME_PREDICATE']:
-            subject, predicate, object, type = get_attributes(line_contents, predicate=None, subject=subject)
+        elif line_contents[0] == '' and line_contents[1] != '' and STATE['SAME_SUBJECT'] and not STATE[
+            'SAME_PREDICATE']:
+            subject, predicate, object, obj_type = get_attributes(line_contents, predicate=None, subject=subject)
 
-        insert_triple(subject, predicate, object, type)
+        DB_DATA.append((subject, predicate, object, obj_type))
+
+    return
 
 
 def get_attributes(line_contents, predicate, subject):
@@ -86,9 +86,9 @@ def get_attributes(line_contents, predicate, subject):
     """
     object = None
 
-    if not subject: # Then new subject being encountered
+    if not subject:  # Then new subject being encountered
         subject = get_url_syntax(line_contents[0])
-        if not subject: # Then in prefix form
+        if not subject:  # Then in prefix form
             subject = translate_tag(line_contents[0])
         STATE['SAME_SUBJECT'] = True
 
@@ -105,15 +105,8 @@ def get_attributes(line_contents, predicate, subject):
 
     if end_line_token == ',':  # new object under same predicate and subject
         object = get_url_syntax(line_contents[2])
-        if not object: # Then object is in prefix form
-            object_with_prefix = re.search("^[^,]*", line_contents[
-                2])
-            try:
-                object_with_prefix.group(2) # This checks to see if multiple commas found in line
-                print ("Invalid data: multiple comma's in line")
-                sys.exit(1)
-            except IndexError:
-                object_with_prefix = object_with_prefix.group()
+        if not object:  # Then object is in prefix form
+            object_with_prefix = strip_end_line(line_contents[2], token=',')
 
         STATE['SAME_SUBJECT'] = True
         STATE['SAME_PREDICATE'] = True
@@ -121,8 +114,7 @@ def get_attributes(line_contents, predicate, subject):
     elif end_line_token == '.':
         object = get_url_syntax(line_contents[2])
         if not object:
-            object_with_prefix = re.search("^[^.]*", line_contents[
-                2]).group()
+            object_with_prefix = strip_end_line(line_contents[2], token='.')
 
         STATE['SAME_SUBJECT'] = False
         STATE['SAME_PREDICATE'] = False
@@ -130,12 +122,13 @@ def get_attributes(line_contents, predicate, subject):
     elif end_line_token == ';':  # new predicate
         object = get_url_syntax(line_contents[2])
         if not object:
-            object_with_prefix = re.search("^[^;]*", line_contents[2]).group()
+            object_with_prefix = strip_end_line(line_contents[2], token=';')
+
         STATE['SAME_SUBJECT'] = True
         STATE['SAME_PREDICATE'] = False
 
     else:
-        if line_contents[2][-1] == '.': # Then we have the last line in the file
+        if line_contents[2][-1] == '.':  # Then we have the last line in the file
             object = get_url_syntax(line_contents[2])
             if not object:
                 object_with_prefix = re.search("^[^.]*", line_contents[
@@ -147,45 +140,79 @@ def get_attributes(line_contents, predicate, subject):
             print ("invalid identifier at end of line")
             sys.exit(1)
 
-
     # handle prefix tags with other data
     if not object:
-        if object_with_prefix and ":" in object_with_prefix:
-            if("^^" in object_with_prefix):
-                object = object_with_prefix
-            else:
-                object = translate_tag(object_with_prefix)
-            type = 'url'
-            # TODO here we handle url tags
-        else: # Then we do not have a url
-            # TODO determine type of object and assign to type for this functions return
-            type = 'other'
+        if ":" in object_with_prefix and "^^" not in object_with_prefix:
+            object = translate_tag(object_with_prefix)
+
+        else:  # Then we do not have a url
             object = object_with_prefix
 
+    object, obj_type = determine_type(object)
+
+    return subject, predicate, object, obj_type
+
+
+def strip_end_line(object, token):
+    """
+    strips the trailing token from a line
+    from: http://stackoverflow.com/questions/4664850/find-all-occurrences-of-a-substring-in-python
+    :param object: object string for object to be stripped
+    :param token: the character token to be stripped
+    :return: trimmed object
+    """
+    last_instance_index = [m.start() for m in re.finditer(token, object)][-1]
+    if object[last_instance_index - 1] == ' ' and object[last_instance_index + 1] == '\n':
+        object = object[:last_instance_index].strip()
     else:
-        type = 'url'
+        print "invalid line ending"
+        sys.exit(1)
 
-    # if not STATE['SAME_SUBJECT']:
-    #     subject = None
-    #     predicate = None
-    #     object = None
-    # if not STATE['SAME_PREDICATE']:
-    #     predicate = None
-    #     object = None
+    return object
 
-    return subject, predicate, object, type
+
+def determine_type(object):
+    """
+    determines the object's type. If the object contains a prefix then the obj_type will be a url describing object type
+    and the object will be the string before the tag was included.
+    example:
+        if input is "812201"^^xsd:nonNegativeInteger
+        then result will be:
+            object = "812201"
+            object_type = http://www.w3.org/2001/XMLSchema#nonNegativeInteger
+    :param object: the object whose type is to be determined
+    :return: object
+    """
+    object_type = 'other'  # 'other' by default
+
+    try:
+        temp = float(object)
+        object_type = 'float'
+
+    except ValueError:
+        if "http://" in object:
+            object_type = 'url'
+        else:
+            object_type = "literal"
+
+        if "^^" in object:
+            object_contents = object.split("^^")
+            object = object_contents[0]
+            object_type = translate_tag(object_contents[1])
+
+
+    return object, object_type
 
 
 def get_url_syntax(object):
     """
-    determines if object is given in prefix form or url form. If in url form it returns the url, othewise returns None
+    determines if object is given in prefix form or url form. If in url form it returns the url, otherwise returns None
     :return: objects url if input is url form, otherwise None
     """
     if "<" in object and ">" in object:
         return object[object.find("<") + 1:object.find(">")]
 
     return None
-
 
 
 def translate_tag(tag):
@@ -195,7 +222,7 @@ def translate_tag(tag):
     :return: the tag without prefixes
     """
     tag_contents = tag.split(':')
-    if tag_contents[0] == "_": # then blank node
+    if tag_contents[0] == "_":  # then blank node
         return tag_contents[1]
 
     result = "%s%s" % (PREFIX_URL[tag_contents[0]], tag_contents[1])
@@ -203,6 +230,11 @@ def translate_tag(tag):
 
 
 def add_prefix(prefix):
+    """
+    given a string with a prefix (ex. rdf:	<http://www.w3.org/1999/02/22-rdf-syntax-ns#> this function
+    will add the key/value pair (key = rdf, value = http://www.w3.org/1999/02/22-rdf-syntax-ns#) to the PREFIX_URL
+    dictionary
+    """
     prefix_contents = prefix.group(1).split('\t')
 
     # this gets the url of the prefix tag. http://stackoverflow.com/questions/4894069/regular-expression-to-return-text-between-parenthesis
@@ -212,23 +244,23 @@ def add_prefix(prefix):
     PREFIX_URL[prefix_contents[0].strip()[:-1]] = url  # Add to the PREFIX_URL dictionary
 
 
-def insert_triple(subject, predicate, object, type):
-    print '\n'
+def insert_data(db):
+    """
+    function that inserts the data to DB.
+    One bulk DB insert for efficiency. and only after checking there are no errors
 
-    print subject
-    print predicate
-    print object
-    print '\n'
+    from: https://docs.python.org/2/library/sqlite3.html
+    :param db: database instance
+    """
 
-    # TODO insert into the DB
+    cursor = db.cursor()
+    if cursor:
+        print DB_DATA
+        # cursor.executemany('INSERT INTO graph_data VALUES (?,?,?,?)', DB_DATA)
+        # db.commit()
+
     return
 
-
-# def new_triple():
-#     """
-#     :return: true if not currently parsing a previous triple
-#     """
-#     return (not STATE['IN_OBJECT'] and not STATE['IN_PREDICATE'] and not STATE['IN_SUBJECT'])
 
 if __name__ == "__main__":
     main()

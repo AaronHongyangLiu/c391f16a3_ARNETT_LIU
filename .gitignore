@@ -8,6 +8,9 @@ sites
 *.elf
 CMakeLists.txt
 
+# DBs
+*.db
+
 # Precompiled Headers
 *.gch
 *.pch
