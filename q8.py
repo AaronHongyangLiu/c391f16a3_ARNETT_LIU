@@ -4,7 +4,6 @@ import re
 
 """
 TODO:
-- ignore non @en lines
 - error checking
 - decide what to do with blank nodes
 
@@ -66,12 +65,14 @@ def parse_file(lines):
         elif line_contents[0] == '' and line_contents[1] == '' and STATE['SAME_SUBJECT'] and STATE['SAME_PREDICATE']:
             subject, predicate, object, obj_type = get_attributes(line_contents, predicate=predicate, subject=subject)
 
-        # genereate triple with existing subject but new predicate
+        # generate triple with existing subject but new predicate
         elif line_contents[0] == '' and line_contents[1] != '' and STATE['SAME_SUBJECT'] and not STATE[
             'SAME_PREDICATE']:
             subject, predicate, object, obj_type = get_attributes(line_contents, predicate=None, subject=subject)
 
-        DB_DATA.append((subject, predicate, object, obj_type))
+        object = is_english(object)  # returns english object, or None if not english
+        if object:
+            DB_DATA.append((subject, predicate, object, obj_type))
 
     return
 
@@ -200,7 +201,6 @@ def determine_type(object):
             object = object_contents[0]
             object_type = translate_tag(object_contents[1])
 
-
     return object, object_type
 
 
@@ -256,10 +256,28 @@ def insert_data(db):
     cursor = db.cursor()
     if cursor:
         print DB_DATA
+        print len(DB_DATA)
         # cursor.executemany('INSERT INTO graph_data VALUES (?,?,?,?)', DB_DATA)
         # db.commit()
 
     return
+
+
+def is_english(object):
+    """
+    determines if the input attributes are english or not and removes language tag if found
+    :param object: the term to check for english qualities
+    :return: object ready for
+    """
+
+    language_tag = re.search("@[a-z]*", object)
+    if language_tag:
+        if language_tag.group() != "@en":
+            return None  # Was another language
+        else:
+            object = object.replace("@en", '')
+
+    return object
 
 
 if __name__ == "__main__":

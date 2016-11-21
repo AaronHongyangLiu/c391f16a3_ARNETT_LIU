@@ -3,29 +3,28 @@ This table will have four attributes;
   1. subject
   2. predicate
   3. object 
-  4. objectType
+  4. type
 
   SQL statements:
-
-CREATE TABLE graph_data (subject text, predicate text, object text, type text);
 
 CREATE TABLE graph_data (
   subject text,
   predicate text,
   object text,
-  objectType text
+  type text
 );
 
 The strategy is that we will parse the RDF data file, and each triple will be a
 row in the table. The stores will be the full uri's (no prefixes). Each time
-a dbr tag is encountered while NOT in a predicate or subject section then this
+a prefix tag is encountered and NOT already in a predicate or subject section, then this
 will be used as the Subject attribute. Tracking which part of the RDF triple we are in
 will be done by using state variables, which are appropriately changed when encountering
-";", ",", and "." tokens. Stores to the database will be done once an entire Subject has been parsed.
-The objectType will be one of the int, float, string, url and some specific type defined from another url.
+";", ",", and "." tokens. One bulk insert call will be made to the database once every line has
+has been translated.
+The type will be one of float, string, url or some specific type defined from another url.
 
       Example:
-    RDF data:
+
 @prefix rdf:	<http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix dbr:	<http://dbpedia.org/resource/> .
 @prefix yago:	<http://dbpedia.org/class/yago/> .
@@ -42,34 +41,41 @@ dbr:Edmonton	rdf:type	dbo:City ,
 		wikidata:Q515 ,
 		yago:AdministrativeDistrict108491826 ,
 		yago:Way104564698 .
+@prefix ns35:	<http://dbpedia.org/datatype/> .
+@prefix ns36:	<http://dbpedia.org/ontology/PopulatedPlace/> .
+dbr:Edmonton	ns36:areaMetro	"9426.73"^^ns35:squareKilometre ;
+dbr:Edmonton    dbo:areaTotal	684370000.0 ;
 
 
 database scheme:
-
-+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-|                                                                       graph_data                                                                                          |
-+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-|                Subject               |                    Predicate                    |                             Object                            |    ObjectType    |
-+--------------------------------------+-------------------------------------------------+---------------------------------------------------------------+------------------+
-| http://dbpedia.org/resource/Edmonton | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://dbpedia.org/class/yago/WikicatTownsInAlberta           |       url        |
-+--------------------------------------+-------------------------------------------------+---------------------------------------------------------------+------------------+
-| http://dbpedia.org/resource/Edmonton | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://dbpedia.org/class/yago/Town108665504                   |       url        |
-+--------------------------------------+-------------------------------------------------+---------------------------------------------------------------+------------------+
-| http://dbpedia.org/resource/Edmonton | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://dbpedia.org/class/yago/GeographicalArea108574314       |       url        |
-+--------------------------------------+-------------------------------------------------+---------------------------------------------------------------+------------------+
-| http://dbpedia.org/resource/Edmonton | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.wikidata.org/entity/Q486972                        |       url        |
-+--------------------------------------+-------------------------------------------------+---------------------------------------------------------------+------------------+
-| http://dbpedia.org/resource/Edmonton | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://dbpedia.org/class/yago/Artifact100021939               |       url        |
-+--------------------------------------+-------------------------------------------------+---------------------------------------------------------------+------------------+
-| http://dbpedia.org/resource/Edmonton | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://dbpedia.org/class/yago/Municipality108626283           |       url        |
-+--------------------------------------+-------------------------------------------------+---------------------------------------------------------------+------------------+
-| http://dbpedia.org/resource/Edmonton | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://dbpedia.org/ontology/City                              |       url        |
-+--------------------------------------+-------------------------------------------------+---------------------------------------------------------------+------------------+
-| http://dbpedia.org/resource/Edmonton | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://dbpedia.org/ontology/PopulatedPlace                    |       url        |
-+--------------------------------------+-------------------------------------------------+---------------------------------------------------------------+------------------+
-| http://dbpedia.org/resource/Edmonton | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://www.wikidata.org/entity/Q515                           |       url        |
-+--------------------------------------+-------------------------------------------------+---------------------------------------------------------------+------------------+
-| http://dbpedia.org/resource/Edmonton | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://dbpedia.org/class/yago/AdministrativeDistrict108491826 |       url        |
-+--------------------------------------+-------------------------------------------------+---------------------------------------------------------------+------------------+
-| http://dbpedia.org/resource/Edmonton | http://www.w3.org/1999/02/22-rdf-syntax-ns#type | http://dbpedia.org/class/yago/Way104564698                    |       url        |
-+--------------------------------------+-------------------------------------------------+---------------------------------------------------------------+------------------+
++-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+|                                                                                                 graph_data                                                                                                |
++-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+|                subject               |                       predicate                      |                             object                            |                     type                    |
++--------------------------------------+------------------------------------------------------+---------------------------------------------------------------+---------------------------------------------+
+| http://dbpedia.org/resource/Edmonton | http://www.w3.org/1999/02/22-rdf-syntax-ns#type      | http://dbpedia.org/class/yago/WikicatTownsInAlberta           | url                                         |
++--------------------------------------+------------------------------------------------------+---------------------------------------------------------------+---------------------------------------------+
+| http://dbpedia.org/resource/Edmonton | http://www.w3.org/1999/02/22-rdf-syntax-ns#type      | http://dbpedia.org/class/yago/Town108665504                   | url                                         |
++--------------------------------------+------------------------------------------------------+---------------------------------------------------------------+---------------------------------------------+
+| http://dbpedia.org/resource/Edmonton | http://www.w3.org/1999/02/22-rdf-syntax-ns#type      | http://dbpedia.org/class/yago/GeographicalArea108574314       | url                                         |
++--------------------------------------+------------------------------------------------------+---------------------------------------------------------------+---------------------------------------------+
+| http://dbpedia.org/resource/Edmonton | http://www.w3.org/1999/02/22-rdf-syntax-ns#type      | http://www.wikidata.org/entity/Q486972                        | url                                         |
++--------------------------------------+------------------------------------------------------+---------------------------------------------------------------+---------------------------------------------+
+| http://dbpedia.org/resource/Edmonton | http://www.w3.org/1999/02/22-rdf-syntax-ns#type      | http://dbpedia.org/class/yago/Artifact100021939               | url                                         |
++--------------------------------------+------------------------------------------------------+---------------------------------------------------------------+---------------------------------------------+
+| http://dbpedia.org/resource/Edmonton | http://www.w3.org/1999/02/22-rdf-syntax-ns#type      | http://dbpedia.org/class/yago/Municipality108626283           | url                                         |
++--------------------------------------+------------------------------------------------------+---------------------------------------------------------------+---------------------------------------------+
+| http://dbpedia.org/resource/Edmonton | http://www.w3.org/1999/02/22-rdf-syntax-ns#type      | http://dbpedia.org/ontology/City                              | url                                         |
++--------------------------------------+------------------------------------------------------+---------------------------------------------------------------+---------------------------------------------+
+| http://dbpedia.org/resource/Edmonton | http://www.w3.org/1999/02/22-rdf-syntax-ns#type      | http://dbpedia.org/ontology/PopulatedPlace                    | url                                         |
++--------------------------------------+------------------------------------------------------+---------------------------------------------------------------+---------------------------------------------+
+| http://dbpedia.org/resource/Edmonton | http://www.w3.org/1999/02/22-rdf-syntax-ns#type      | http://www.wikidata.org/entity/Q515                           | url                                         |
++--------------------------------------+------------------------------------------------------+---------------------------------------------------------------+---------------------------------------------+
+| http://dbpedia.org/resource/Edmonton | http://www.w3.org/1999/02/22-rdf-syntax-ns#type      | http://dbpedia.org/class/yago/AdministrativeDistrict108491826 | url                                         |
++--------------------------------------+------------------------------------------------------+---------------------------------------------------------------+---------------------------------------------+
+| http://dbpedia.org/resource/Edmonton | http://www.w3.org/1999/02/22-rdf-syntax-ns#type      | http://dbpedia.org/class/yago/Way104564698                    | url                                         |
++--------------------------------------+------------------------------------------------------+---------------------------------------------------------------+---------------------------------------------+
+| http://dbpedia.org/resource/Edmonton | http://dbpedia.org/ontology/PopulatedPlace/areaMetro | "9426.73"                                                     | http://dbpedia.org/datatype/squareKilometre |
++--------------------------------------+------------------------------------------------------+---------------------------------------------------------------+---------------------------------------------+
+| http://dbpedia.org/resource/Edmonton | http://dbpedia.org/ontology/areaTotal                | 684370000.0                                                   | float                                       |
++--------------------------------------+------------------------------------------------------+---------------------------------------------------------------+---------------------------------------------+
