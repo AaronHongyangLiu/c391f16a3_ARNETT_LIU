@@ -4,7 +4,6 @@ import re
 
 """
 TODO:
-- error checking - should raise error if comma changed to . or ;
 - decide what to do with blank nodes
 
 """
@@ -85,6 +84,11 @@ def parse_file(lines):
         elif line_contents[0] == '' and line_contents[1] != '' and STATE['SAME_SUBJECT'] and not STATE[
             'SAME_PREDICATE']:
             subject, predicate, object, obj_type = get_attributes(line_contents, predicate=None, subject=subject)
+
+        else:
+            print "Syntax error - Invalid use of end-line token (expected a different end line token than the one given). \nRefer to line containing '%s'" % (
+            '\t').join(line_contents).strip('\n')
+            sys.exit(1)
 
         object = is_english(object)  # returns english object, or None if not english
         if object:
@@ -241,7 +245,7 @@ def translate_tag(tag):
         print "Invalid character found in input. Line contents = '%s'" % tag.strip('\n')
         sys.exit(1)
     tag_contents = tag.split(':')
-    if tag_contents[0] == "_":  # then blank node
+    if tag_contents[0] == "_":  # TODO as how to handle blank node
         return tag_contents[1]
 
     if tag_contents[0] not in PREFIX_URL.keys():
