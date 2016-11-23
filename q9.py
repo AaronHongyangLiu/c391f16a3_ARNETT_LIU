@@ -121,12 +121,12 @@ def readPattern(pattern):
     read a (subj pred obej) pattern, store the variable and sub-sql-query in the dictionary
     :param pattern: a list as [subj, pred, obej] pattern
     """
-    QUERY_TEMPLATE = {(0,): ("subject as %s", "predicate = %s and object = %s"),
-                      (1,): ("predicate as %s", "subject = %s and object = %s"),
-                      (2,): ("object as %s", "subject = %s and predicate = %s"),
-                      (0, 1): ("subject as %s, predicate as %s", "object = %s"),
-                      (0, 2): ("subject as %s, object as %s", "predicate = %s"),
-                      (1, 2): ("predicate as %s, object as %s", "subject = %s")}
+    QUERY_TEMPLATE = {(0,): ("subject as %s", '''predicate = "%s" and object = "%s"'''),
+                      (1,): ("predicate as %s", '''subject = "%s" and object = "%s"'''),
+                      (2,): ("object as %s", '''subject = "%s" and predicate = "%s"'''),
+                      (0, 1): ("subject as %s, predicate as %s", '''object = "%s"'''),
+                      (0, 2): ("subject as %s, object as %s", '''predicate = "%s"'''),
+                      (1, 2): ("predicate as %s, object as %s", '''subject = "%s"''')}
 
     if pattern[2][-1] == ".":
         pattern[2] = pattern[2][:-1]
@@ -134,7 +134,7 @@ def readPattern(pattern):
     variables = []
     conditions = []
     template_number = []
-    print(pattern)
+
     for i in range(3):
         if pattern[i][0] == "?":  # if the term is a variable
             variables.append(pattern[i][1:])
