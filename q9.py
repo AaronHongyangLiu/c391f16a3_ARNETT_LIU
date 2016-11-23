@@ -9,7 +9,8 @@ STATE = {'IN_PREFIX': False,
          'IN_FILTER': False}
 SUB_QUERIES = []
 SUB_VARS = []
-FILTERS = {}
+FILTERS = []
+FILTER_VAR = []
 
 
 def main():
@@ -26,12 +27,20 @@ def main():
 
     print(query)
 
-    # conn = sqlite3.connect(sys.argv[1])  # connection to the database
-    # c = conn.cursor()  # cursor
-    #
-    # c.execute(query)
-    # print(c.fetchall())
+    conn = sqlite3.connect(sys.argv[1])  # connection to the database
+    c = conn.cursor()  # cursor
+    conn.create_function("convert",1,convert)
+    c.execute(query)
+    print(c.fetchall())
 
+def convert(value):
+    try:
+        a = float(value)
+        if "." in value:
+            a = int(value)
+        return a
+    except ValueError:
+        return value
 
 def reformat(string):
     """
@@ -40,21 +49,31 @@ def reformat(string):
       2. (subj pred obj) and "WHERE {" will be in different lines
       3. there will be at least one space between SELECT and first ?var or *
       4. there will be at least one space between WHERE and {
+      5. there will be at least one space between FILTER and (
     :param string: all the characters in the input file
     :return: a list of each line in the formatted file
     """
-    # TODO: remove comments?
     # TODO: will the select and ?var in different lines?
 
+    # changes #3
     select_index = string.upper().index("\nSELECT") + 6
-    string = string[:select_index + 1] + " " + string[select_index + 1:]  # changes #3
+    string = string[:select_index + 1] + " " + string[select_index + 1:]
 
+    # changes #1,#2,#4
     where_index = 0
     while where_index < select_index:
         where_index = string.upper().find("WHERE", where_index + 1) + 4
     curly_open = string.find("{", where_index)
-    string = string[:where_index - 4] + "\nWHERE {" + string[curly_open + 1:]  # changes #1,#2,#4
+    string = string[:where_index - 4] + "\nWHERE {" + string[curly_open + 1:]
+
+    # changes #5
+    filter_index = string.upper().find("FILTER", 0)
+    while filter_index >= 0:
+        string = string[1:filter_index+6]+ " " +string[filter_index+6:]
+        filter_index = string.upper().find("FILTER", filter_index)
+
     return string.split("\n")
+
 
 
 def parseFile(sparql_lines):
@@ -101,8 +120,7 @@ def parseFile(sparql_lines):
 
         elif STATE['IN_WHERE']:
             if line[0][:6].upper() == "FILTER":  # if this is a filter line
-                # TODO: do filter staff
-                pass
+                addFilter(line)
             elif line[0] == "}":
                 STATE['IN_WHERE'] = False
             else:
@@ -115,18 +133,21 @@ def parseFile(sparql_lines):
     result = buildQuery()
     return result
 
+def addFilter(tokens):
+    pass
 
 def readPattern(pattern):
     """
     read a (subj pred obej) pattern, store the variable and sub-sql-query in the dictionary
     :param pattern: a list as [subj, pred, obej] pattern
     """
-    QUERY_TEMPLATE = {(0,): ("subject as %s", '''predicate = "%s" and object = "%s"'''),
-                      (1,): ("predicate as %s", '''subject = "%s" and object = "%s"'''),
-                      (2,): ("object as %s", '''subject = "%s" and predicate = "%s"'''),
-                      (0, 1): ("subject as %s, predicate as %s", '''object = "%s"'''),
-                      (0, 2): ("subject as %s, object as %s", '''predicate = "%s"'''),
-                      (1, 2): ("predicate as %s, object as %s", '''subject = "%s"''')}
+    # todo : need index name
+    QUERY_TEMPLATE = {(0,): ("subject as %s", '''predicate = "%s" and object = "%s"''', ""),
+                      (1,): ("predicate as %s", '''subject = "%s" and object = "%s"''', ""),
+                      (2,): ("convert(object) as %s", '''subject = "%s" and predicate = "%s"''', ""),
+                      (0, 1): ("subject as %s, predicate as %s", '''object = "%s"''', ""),
+                      (0, 2): ("subject as %s, convert(object) as %s", '''predicate = "%s"''', ""),
+                      (1, 2): ("predicate as %s, convert(object) as %s", '''subject = "%s"''', "")}
 
     if pattern[2][-1] == ".":
         pattern[2] = pattern[2][:-1]
@@ -152,8 +173,9 @@ def readPattern(pattern):
             conditions.append(pattern[i])
         template_number = tuple(template_number)
 
-    query = "SELECT DISTINCT %s FROM graph_data WHERE %s " \
+    query = "SELECT DISTINCT %s FROM graph_data INDEXED BY %s WHERE %s " \
             % (QUERY_TEMPLATE[template_number][0] % tuple(variables),
+               QUERY_TEMPLATE[template_number][2],
                QUERY_TEMPLATE[template_number][1] % tuple(conditions))
 
     SUB_VARS.append(variables)
