@@ -4,7 +4,6 @@ import re
 
 """
 TODO:
-- error checking
 - decide what to do with blank nodes
 
 """
@@ -17,6 +16,8 @@ STATE = {
     'SAME_PREDICATE': False,
     'SAME_OBJECT': False
 }
+
+END_LINE_TOKENS = ['.', ',', ';']
 
 
 def main():
@@ -49,6 +50,20 @@ def parse_file(lines):
     obj_type = None
 
     for line in lines:
+        if '#' in line and "<" not in line and ">" not in line:  # Then comment exists and we ignore
+            # we check for presence of "<" and ">" because '#'s can be found in urls,
+            # and urls are encased in '<' and '>'
+            index = line.find('#')
+            line = line[:index].rstrip()
+            line += '\n' # add newline character to keep format consistent
+
+        if line == "\n":  # Ignore blank lines
+            continue
+
+        if line.strip('\n')[-1] not in END_LINE_TOKENS:
+            print "There is a line missing a valid end-line token. '%s' not in %s" % (
+            line.strip('\n')[-1], END_LINE_TOKENS)
+            sys.exit(1)
         # check if @prefix line
         prefix = re.search("(?:)@prefix(.*)", line)  # https://docs.python.org/2/howto/regex.html
         if prefix:
@@ -69,6 +84,11 @@ def parse_file(lines):
         elif line_contents[0] == '' and line_contents[1] != '' and STATE['SAME_SUBJECT'] and not STATE[
             'SAME_PREDICATE']:
             subject, predicate, object, obj_type = get_attributes(line_contents, predicate=None, subject=subject)
+
+        else:
+            print "Syntax error - Invalid use of end-line token (expected a different end line token than the one given). \nRefer to line containing '%s'" % (
+            '\t').join(line_contents).strip('\n')
+            sys.exit(1)
 
         object = is_english(object)  # returns english object, or None if not english
         if object:
@@ -138,7 +158,7 @@ def get_attributes(line_contents, predicate, subject):
             STATE['SAME_SUBJECT'] = False
             STATE['SAME_PREDICATE'] = False
         else:
-            print ("invalid identifier at end of line")
+            print ("invalid or missing identifier at end of line")
             sys.exit(1)
 
     # handle prefix tags with other data
@@ -221,9 +241,16 @@ def translate_tag(tag):
     :param tag: example -->  dbr:Edmonton
     :return: the tag without prefixes
     """
+    if ":" not in tag:
+        print "Invalid character found in input. Line contents = '%s'" % tag.strip('\n')
+        sys.exit(1)
     tag_contents = tag.split(':')
-    if tag_contents[0] == "_":  # then blank node
+    if tag_contents[0] == "_":  # TODO as how to handle blank node
         return tag_contents[1]
+
+    if tag_contents[0] not in PREFIX_URL.keys():
+        print "prefix tag '%s' is undefined in input file." % tag_contents[0]
+        sys.exit(1)
 
     result = "%s%s" % (PREFIX_URL[tag_contents[0]], tag_contents[1])
     return result
@@ -236,6 +263,9 @@ def add_prefix(prefix):
     dictionary
     """
     prefix_contents = prefix.group(1).split('\t')
+    if len(prefix_contents) != 2:
+        print "Invalid prefix tag in input file"
+        sys.exit(1)
 
     # this gets the url of the prefix tag. http://stackoverflow.com/questions/4894069/regular-expression-to-return-text-between-parenthesis
     url = prefix_contents[1][prefix_contents[1].find("<") + 1:prefix_contents[1].find(
@@ -255,7 +285,8 @@ def insert_data(db):
 
     cursor = db.cursor()
     if cursor:
-        print DB_DATA
+        for triple in DB_DATA:
+            print triple
         print len(DB_DATA)
         # cursor.executemany('INSERT INTO graph_data VALUES (?,?,?,?)', DB_DATA)
         # db.commit()
