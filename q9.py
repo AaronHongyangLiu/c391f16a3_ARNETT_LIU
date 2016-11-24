@@ -70,14 +70,14 @@ def reformat(string):
     where_index = 0
     while where_index < select_index:
         where_index = string.upper().find("WHERE", where_index + 1) + 4
-    curly_open = string.find("{", where_index)
+    curly_open = string.find("{", where_index+1)
     string = string[:where_index - 4] + "\nWHERE {" + string[curly_open + 1:]
 
     # changes #5
     filter_index = string.upper().find("FILTER", 0)
     while filter_index >= 0:
-        string = string[1:filter_index+6]+ " " +string[filter_index+6:]
-        filter_index = string.upper().find("FILTER", filter_index)
+        string = string[:filter_index+6]+ " " +string[filter_index+6:]
+        filter_index = string.upper().find("FILTER", filter_index+1)
 
     return string.split("\n")
 
@@ -156,14 +156,19 @@ def addFilter(tokens):
         else:
             break
     FILTER_VAR.append(varName)
-    if "regx" in filterLine:
+    if "regex" in filterLine:
+
         first_quote = filterLine.find('''"''')
         if first_quote > 0:
-            second_quote = filterLine.find('''"''',first_quote)
+            second_quote = filterLine.find('''"''',first_quote+1)
         else:
             first_quote = filterLine.find("'")
-            second_quote = filterLine.find("'",first_quote)
+            if first_quote < 0:
+                print("error")
+                sys.exit()
+            second_quote = filterLine.find("'",first_quote+1)
         targetString = filterLine[first_quote+1:second_quote]
+
         FILTERS.append('''%s = "%s"''' % (varName,targetString) )
     else:
         # it has to be a number
@@ -173,15 +178,14 @@ def addFilter(tokens):
         for char in filterLine:
             if char.isnumeric() or char == ".":
                 number+=char
-            else:
-                break
-        operations = ["!=", "=", ">=", "<=", ">","<"]
+
+        operations = ["!=", ">=", "<=", "=", ">","<"]
         for op in operations:
             if op in filterLine:
                 operation = op
                 break
         filterLine.find("!")
-        FILTERS.append('''%s %s "%s"''' % (varName,operation,number))
+        FILTERS.append("%s %s %s" % (varName,operation,number))
 
 
 
@@ -221,9 +225,9 @@ def readPattern(pattern):
             conditions.append(url)
         else:
             conditions.append(pattern[i])
-        template_number = tuple(template_number)
+    template_number = tuple(template_number)
 
-    query = "SELECT DISTINCT %s FROM graph_data INDEXED BY %s WHERE %s " \
+    query = "SELECT DISTINCT %s \nFROM graph_data INDEXED BY %s \nWHERE %s " \
             % (QUERY_TEMPLATE[template_number][0] % tuple(variables),
                QUERY_TEMPLATE[template_number][2],
                QUERY_TEMPLATE[template_number][1] % tuple(conditions))
@@ -241,21 +245,24 @@ def buildQuery():
     currentVars = set(keys.pop(0))
     # combine all the subqueries:
     query = SUB_QUERIES.pop(0)
-    while any(keys):
+    used = []
+    while len(used) != len(keys):
         for i in range(len(keys)):
             vars = keys[i]
             if not currentVars.isdisjoint(set(vars)):
                 commonVars = tuple(currentVars.intersection(set(vars)))
                 currentVars = currentVars.union(set(vars))
-                query = "SELECT * FROM ((%s) as t1 JOIN (%s) as t2 USING " %(query, SUB_QUERIES.pop(i))
+                query = "SELECT * \nFROM (\n(%s) \nJOIN \n(%s) \nUSING " %(query, SUB_QUERIES[i])
                 query += "%s,"*(len(commonVars)-1)
-                query += "%s)" % commonVars
-                keys.remove(vars)
+                query += "%s)\n" % commonVars
+                used.append(i)
+
 
     # output those needed:
     if OUTPUT_VAR != ["*"]:
-        s = "%s "*len(OUTPUT_VAR)
-        query = ("SELECT %s" % (s) )%tuple(OUTPUT_VAR) + "FROM ( " + query+ " )"
+        s = "%s, "*(len(OUTPUT_VAR)-1)
+        s += "%s "
+        query = ("SELECT %s" % (s) )%tuple(OUTPUT_VAR) + "\nFROM ( " + query+ ")"
 
         # check error
         if not currentVars.issuperset(set(OUTPUT_VAR)):
@@ -263,12 +270,12 @@ def buildQuery():
             sys.exit()
 
     if len(FILTERS) != 0:
-        query += " where "
+        query += " \nWHERE "
         for i in range(len(FILTERS)):
             if i == 0:
                 query += FILTERS[i]
             else:
-                query += " and " + FILTERS[i]
+                query += " \nand " + FILTERS[i]
 
     query += ";"
     return query
