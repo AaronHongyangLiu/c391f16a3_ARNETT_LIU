@@ -7,3 +7,6 @@ Question 8:
 
 
 
+Question 9:
+    - assume that the SELECT and ?var will be in the same line
+    - assume there is no || or &&
