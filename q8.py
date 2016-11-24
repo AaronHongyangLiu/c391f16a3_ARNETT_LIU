@@ -2,12 +2,10 @@ import sqlite3  # https://docs.python.org/2/library/sqlite3.html
 import sys
 import re
 
-"""
-TODO:
-- decide what to do with blank nodes
 
 """
-
+TODO implement a better way to insert into DB. Insert every 1000 rows or so, but then delete all data if an error occurs
+"""
 PREFIX_URL = {}
 DB_DATA = []
 
@@ -55,14 +53,14 @@ def parse_file(lines):
             # and urls are encased in '<' and '>'
             index = line.find('#')
             line = line[:index].rstrip()
-            line += '\n' # add newline character to keep format consistent
+            line += '\n'  # add newline character to keep format consistent
 
         if line == "\n":  # Ignore blank lines
             continue
 
         if line.strip('\n')[-1] not in END_LINE_TOKENS:
             print "There is a line missing a valid end-line token. '%s' not in %s" % (
-            line.strip('\n')[-1], END_LINE_TOKENS)
+                line.strip('\n')[-1], END_LINE_TOKENS)
             sys.exit(1)
         # check if @prefix line
         prefix = re.search("(?:)@prefix(.*)", line)  # https://docs.python.org/2/howto/regex.html
@@ -74,25 +72,25 @@ def parse_file(lines):
 
         # generate new triple without any existing context
         if line_contents[0] != '':
-            subject, predicate, object, obj_type = get_attributes(line_contents, predicate=None, subject=None)
+            subject, predicate, object, obj_type, numerical_object = get_attributes(line_contents, predicate=None, subject=None)
 
         # generate triple with existing subject and predicate
         elif line_contents[0] == '' and line_contents[1] == '' and STATE['SAME_SUBJECT'] and STATE['SAME_PREDICATE']:
-            subject, predicate, object, obj_type = get_attributes(line_contents, predicate=predicate, subject=subject)
+            subject, predicate, object, obj_type, numerical_object = get_attributes(line_contents, predicate=predicate, subject=subject)
 
         # generate triple with existing subject but new predicate
         elif line_contents[0] == '' and line_contents[1] != '' and STATE['SAME_SUBJECT'] and not STATE[
             'SAME_PREDICATE']:
-            subject, predicate, object, obj_type = get_attributes(line_contents, predicate=None, subject=subject)
+            subject, predicate, object, obj_type, numerical_object = get_attributes(line_contents, predicate=None, subject=subject)
 
         else:
             print "Syntax error - Invalid use of end-line token (expected a different end line token than the one given). \nRefer to line containing '%s'" % (
-            '\t').join(line_contents).strip('\n')
+                '\t').join(line_contents).strip('\n')
             sys.exit(1)
 
         object = is_english(object)  # returns english object, or None if not english
         if object:
-            DB_DATA.append((subject, predicate, object, obj_type))
+            DB_DATA.append((subject, predicate, object, obj_type, numerical_object))
 
     return
 
@@ -169,9 +167,9 @@ def get_attributes(line_contents, predicate, subject):
         else:  # Then we do not have a url
             object = object_with_prefix
 
-    object, obj_type = determine_type(object)
+    object, obj_type, numerical_object = determine_type(object)
 
-    return subject, predicate, object, obj_type
+    return subject, predicate, object, obj_type, numerical_object
 
 
 def strip_end_line(object, token):
@@ -202,13 +200,18 @@ def determine_type(object):
             object = "812201"
             object_type = http://www.w3.org/2001/XMLSchema#nonNegativeInteger
     :param object: the object whose type is to be determined
-    :return: object
+    :return: object in string representation, a tag of it's type, and a numeric representation of the float/int type objects (otherwise None for string type objects)
     """
     object_type = 'other'  # 'other' by default
+    numerical_object = None
 
     try:
-        temp = float(object)
-        object_type = 'float'
+        if "." in object:
+            numerical_object = float(object)
+            object_type = 'float'
+        else:
+            numerical_object = int(object)
+            object_type = 'int'
 
     except ValueError:
         if "http://" in object:
@@ -221,7 +224,9 @@ def determine_type(object):
             object = object_contents[0]
             object_type = translate_tag(object_contents[1])
 
-    return object, object_type
+            numerical_object = None
+
+    return object, object_type, numerical_object
 
 
 def get_url_syntax(object):
@@ -238,15 +243,16 @@ def get_url_syntax(object):
 def translate_tag(tag):
     """
     generates the text that will be saved in database
+    WARNING - blank nodes are stored as they come. _:b27527865 ---> _:b27527865
     :param tag: example -->  dbr:Edmonton
-    :return: the tag without prefixes
+    :return: the tag without prefixes ---> 'http://dbpedia.org/resource/Edmonton'
     """
     if ":" not in tag:
         print "Invalid character found in input. Line contents = '%s'" % tag.strip('\n')
         sys.exit(1)
     tag_contents = tag.split(':')
-    if tag_contents[0] == "_":  # TODO as how to handle blank node
-        return tag_contents[1]
+    if tag_contents[0] == "_":
+        return tag.strip()
 
     if tag_contents[0] not in PREFIX_URL.keys():
         print "prefix tag '%s' is undefined in input file." % tag_contents[0]
@@ -288,7 +294,7 @@ def insert_data(db):
         for triple in DB_DATA:
             print triple
         print len(DB_DATA)
-        # cursor.executemany('INSERT INTO graph_data VALUES (?,?,?,?)', DB_DATA)
+        # cursor.executemany('INSERT INTO graph_data VALUES (?,?,?,?,?)', DB_DATA)
         # db.commit()
 
     return

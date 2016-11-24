@@ -4,15 +4,12 @@ This table will have four attributes;
   2. predicate
   3. object 
   4. type
+  5. numerical_object
 
   SQL statements:
 
-CREATE TABLE graph_data (
-  subject text,
-  predicate text,
-  object text,
-  type text
-);
+CREATE TABLE graph_data (subject TEXT, predicate TEXT, object TEXT, type TEXT, numerical_object REAL DEFAULT NULL);
+
 
 The strategy is that we will parse the RDF data file, and each triple will be a
 row in the table. The stores will be the full uri's (no prefixes). Each time
@@ -21,7 +18,10 @@ will be used as the Subject attribute. Tracking which part of the RDF triple we 
 will be done by using state variables, which are appropriately changed when encountering
 ";", ",", and "." tokens. One bulk insert call will be made to the database once every line has
 has been translated.
-The type will be one of float, string, url or some specific type defined from another url.
+The type will be one of float, string, url or some specific type defined from another url. If the
+object is of type float, then its float representation will be stored in the 'numerical_object' attribute.
+Similarly, if an object is of type int, then its integer representation will be stored in it's 'numerical_object' attribute.
+All other string type objects will have their numerical_object attribute be NULL
 
       Example:
 

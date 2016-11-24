@@ -1,1 +1,17 @@
-Maybe we should have indices on the subject and predicate columns since they have redundancy?
+CREATE INDEX subject_index ON graph_data(subject);
+
+CREATE INDEX predicate_index ON graph_data(predicate);
+
+CREATE INDEX object_index ON graph_data(object);
+
+CREATE INDEX subject_object_index ON graph_data(subject, object);
+
+CREATE INDEX subject_predicate_index ON graph_data(subject, predicate);
+
+CREATE INDEX predicate_object_index ON graph_data(predicate, object);
+
+-- these indexes were created to speed up query searching the RDF data in the layout of our DB.
+
+TODO better explanation
+-- The indexes created on the individual columns will help in searching for results matching the SELECT clause.
+-- indexes were created for the subject, predicate and object columns, to speed u
