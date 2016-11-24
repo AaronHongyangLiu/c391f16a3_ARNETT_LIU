@@ -33,6 +33,7 @@ def main():
     # c.execute(query)
     # print(c.fetchall())
 
+
 def convert(value):
     """
     this is a sql function that will try to convert value to int or float
@@ -48,6 +49,7 @@ def convert(value):
         return a
     except ValueError:
         return value
+
 
 def reformat(string):
     """
@@ -70,17 +72,16 @@ def reformat(string):
     where_index = 0
     while where_index < select_index:
         where_index = string.upper().find("WHERE", where_index + 1) + 4
-    curly_open = string.find("{", where_index+1)
+    curly_open = string.find("{", where_index + 1)
     string = string[:where_index - 4] + "\nWHERE {" + string[curly_open + 1:]
 
     # changes #5
     filter_index = string.upper().find("FILTER", 0)
     while filter_index >= 0:
-        string = string[:filter_index+6]+ " " +string[filter_index+6:]
-        filter_index = string.upper().find("FILTER", filter_index+1)
+        string = string[:filter_index + 6] + " " + string[filter_index + 6:]
+        filter_index = string.upper().find("FILTER", filter_index + 1)
 
     return string.split("\n")
-
 
 
 def parseFile(sparql_lines):
@@ -140,54 +141,53 @@ def parseFile(sparql_lines):
     result = buildQuery()
     return result
 
+
 def addFilter(tokens):
     """
     add the filter line to the global variable
     :param tokens: all the token in the filter line
     """
-    filterLine = "".join(tokens)
-    variableStart = filterLine.find("?")
-    varName = ""
-    variableEnd = variableStart
-    for char in filterLine[variableStart+1:]:
+    filter_line = "".join(tokens)
+    variable_start = filter_line.find("?")
+    var_name = ""
+    variable_end = variable_start
+    for char in filter_line[variable_start + 1:]:
         if char not in ",><=)":
-            varName += char
-            variableEnd += 1
+            var_name += char
+            variable_end += 1
         else:
             break
-    FILTER_VAR.append(varName)
-    if "regex" in filterLine:
+    FILTER_VAR.append(var_name)
+    if "regex" in filter_line:
 
-        first_quote = filterLine.find('''"''')
+        first_quote = filter_line.find('''"''')
         if first_quote > 0:
-            second_quote = filterLine.find('''"''',first_quote+1)
+            second_quote = filter_line.find('''"''', first_quote + 1)
         else:
-            first_quote = filterLine.find("'")
+            first_quote = filter_line.find("'")
             if first_quote < 0:
                 print("error")
                 sys.exit()
-            second_quote = filterLine.find("'",first_quote+1)
-        targetString = filterLine[first_quote+1:second_quote]
+            second_quote = filter_line.find("'", first_quote + 1)
+        target_string = filter_line[first_quote + 1:second_quote]
 
-        FILTERS.append('''%s = "%s"''' % (varName,targetString) )
+        FILTERS.append('''%s = "%s"''' % (var_name, target_string))
     else:
         # it has to be a number
-        filterLine = filterLine[:variableStart+1] + filterLine[variableEnd+1:]
+        filter_line = filter_line[:variable_start + 1] + filter_line[variable_end + 1:]
         number = ""
         operation = ""
-        for char in filterLine:
+        for char in filter_line:
             if char.isnumeric() or char == ".":
-                number+=char
+                number += char
 
-        operations = ["!=", ">=", "<=", "=", ">","<"]
+        operations = ["!=", ">=", "<=", "=", ">", "<"]
         for op in operations:
-            if op in filterLine:
+            if op in filter_line:
                 operation = op
                 break
-        filterLine.find("!")
-        FILTERS.append("%s %s %s" % (varName,operation,number))
-
-
+        filter_line.find("!")
+        FILTERS.append("%s %s %s" % (var_name, operation, number))
 
 
 def readPattern(pattern):
@@ -196,9 +196,10 @@ def readPattern(pattern):
     :param pattern: a list as [subj, pred, obej] pattern
     """
 
-    QUERY_TEMPLATE = {(0,): ("subject as %s", '''predicate = "%s" and object = "%s"''', "predicate_object_index"),
+    query_template = {(0,): ("subject as %s", '''predicate = "%s" and object = "%s"''', "predicate_object_index"),
                       (1,): ("predicate as %s", '''subject = "%s" and object = "%s"''', "subject_object_index"),
-                      (2,): ("convert(object) as %s", '''subject = "%s" and predicate = "%s"''', "subject_predicate_index"),
+                      (2,): (
+                      "convert(object) as %s", '''subject = "%s" and predicate = "%s"''', "subject_predicate_index"),
                       (0, 1): ("subject as %s, predicate as %s", '''object = "%s"''', "object_index"),
                       (0, 2): ("subject as %s, convert(object) as %s", '''predicate = "%s"''', "predicate_index"),
                       (1, 2): ("predicate as %s, convert(object) as %s", '''subject = "%s"''', "subject_index")}
@@ -228,9 +229,9 @@ def readPattern(pattern):
     template_number = tuple(template_number)
 
     query = "SELECT DISTINCT %s \nFROM graph_data INDEXED BY %s \nWHERE %s " \
-            % (QUERY_TEMPLATE[template_number][0] % tuple(variables),
-               QUERY_TEMPLATE[template_number][2],
-               QUERY_TEMPLATE[template_number][1] % tuple(conditions))
+            % (query_template[template_number][0] % tuple(variables),
+               query_template[template_number][2],
+               query_template[template_number][1] % tuple(conditions))
 
     SUB_VARS.append(variables)
     SUB_QUERIES.append(query)
@@ -242,31 +243,30 @@ def buildQuery():
     :return: the final sql query
     """
     keys = SUB_VARS
-    currentVars = set(keys.pop(0))
-    # combine all the subqueries:
+    current_vars = set(keys.pop(0))
+    # combine all the sub-queries:
     query = SUB_QUERIES.pop(0)
     used = []
     while len(used) != len(keys):
         for i in range(len(keys)):
-            vars = keys[i]
-            if not currentVars.isdisjoint(set(vars)):
-                commonVars = tuple(currentVars.intersection(set(vars)))
-                currentVars = currentVars.union(set(vars))
-                query = "SELECT * \nFROM (\n(%s) \nJOIN \n(%s) \nUSING " %(query, SUB_QUERIES[i])
-                query += "%s,"*(len(commonVars)-1)
-                query += "%s)\n" % commonVars
+            variables = keys[i]
+            if not current_vars.isdisjoint(set(variables)):
+                common_vars = tuple(current_vars.intersection(set(variables)))
+                current_vars = current_vars.union(set(variables))
+                query = "SELECT * \nFROM (\n(%s) \nJOIN \n(%s) \nUSING " % (query, SUB_QUERIES[i])
+                query += "%s," * (len(common_vars) - 1)
+                query += "%s)\n" % common_vars
                 used.append(i)
-
 
     # output those needed:
     if OUTPUT_VAR != ["*"]:
-        s = "%s, "*(len(OUTPUT_VAR)-1)
+        s = "%s, " * (len(OUTPUT_VAR) - 1)
         s += "%s "
-        query = ("SELECT %s" % (s) )%tuple(OUTPUT_VAR) + "\nFROM ( " + query+ ")"
+        query = ("SELECT %s" % s) % tuple(OUTPUT_VAR) + "\nFROM ( " + query + ")"
 
         # check error
-        if not currentVars.issuperset(set(OUTPUT_VAR)):
-            print("At least one of the output var is not in the where clause, out:",OUTPUT_VAR,"where:",currentVars)
+        if not current_vars.issuperset(set(OUTPUT_VAR)):
+            print("At least one of the output var is not in the where clause, out:", OUTPUT_VAR, "where:", current_vars)
             sys.exit()
 
     if len(FILTERS) != 0:
