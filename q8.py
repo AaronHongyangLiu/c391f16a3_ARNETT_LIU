@@ -2,12 +2,8 @@ import sqlite3  # https://docs.python.org/2/library/sqlite3.html
 import sys
 import re
 
-
-"""
-TODO implement a better way to insert into DB. Insert every 1000 rows or so, but then delete all data if an error occurs
-"""
 PREFIX_URL = {}
-DB_DATA = []
+DB_DATA = []  # this holds the tuples that will be inserted in DB
 
 STATE = {
     'SAME_SUBJECT': False,
@@ -48,9 +44,10 @@ def parse_file(lines):
     obj_type = None
 
     for line in lines:
+        line = line.replace('\t', ' ').strip()  # replace tabs with spaces
+
         if '#' in line and "<" not in line and ">" not in line:  # Then comment exists and we ignore
-            # we check for presence of "<" and ">" because '#'s can be found in urls,
-            # and urls are encased in '<' and '>'
+            # we check for presence of "<" and ">" because '#'s can be found in urls and urls are encased in '<' and '>'
             index = line.find('#')
             line = line[:index].rstrip()
             line += '\n'  # add newline character to keep format consistent
@@ -62,27 +59,46 @@ def parse_file(lines):
             print "There is a line missing a valid end-line token. '%s' not in %s" % (
                 line.strip('\n')[-1], END_LINE_TOKENS)
             sys.exit(1)
-        # check if @prefix line
-        prefix = re.search("(?:)@prefix(.*)", line)  # https://docs.python.org/2/howto/regex.html
-        if prefix:
-            add_prefix(prefix)
-            continue  # go to next line
 
-        line_contents = line.split('\t')
+        # check if prefix declaration line
+        prefix_rdf = re.search("(?:)@prefix(.*)", line)  # https://docs.python.org/2/howto/regex.html
+        prefix_sparql = re.search("(?:)PREFIX(.*)", line)
+
+        if prefix_rdf:
+            if not STATE['SAME_PREDICATE'] and not STATE[
+                'SAME_SUBJECT']:  # Checks if previous line has '.' endline token
+                add_prefix(prefix_rdf)
+                continue
+            else:
+                print "Syntax error - Invalid use of end-line token (expected a different end line token than the one given). \nRefer to line containing '%s'" % (
+                    '\t').join(line_contents).strip('\n')
+                sys.exit(1)
+        elif prefix_sparql:
+            if not STATE['SAME_PREDICATE'] and not STATE['SAME_SUBJECT']:
+                add_prefix(prefix_sparql)
+                continue
+            else:
+                print "Syntax error - Invalid use of end-line token (expected a different end line token than the one given). \nRefer to line containing '%s'" % (
+                    '\t').join(line_contents).strip('\n')
+                sys.exit(1)
+
+        line_contents = line.split()
+        line_contents = join_literal(line_contents)
 
         # generate new triple without any existing context
-        if line_contents[0] != '':
-            subject, predicate, object, obj_type, numerical_object = get_attributes(line_contents, predicate=None, subject=None)
+        if len(line_contents) == 4:
+            subject, predicate, object, obj_type, numerical_object = get_attributes(line_contents, predicate=None,
+                                                                                    subject=None)
 
         # generate triple with existing subject and predicate
-        elif line_contents[0] == '' and line_contents[1] == '' and STATE['SAME_SUBJECT'] and STATE['SAME_PREDICATE']:
-            subject, predicate, object, obj_type, numerical_object = get_attributes(line_contents, predicate=predicate, subject=subject)
+        elif len(line_contents) == 2 and STATE['SAME_SUBJECT'] and STATE['SAME_PREDICATE']:
+            subject, predicate, object, obj_type, numerical_object = get_attributes(line_contents, predicate=predicate,
+                                                                                    subject=subject)
 
         # generate triple with existing subject but new predicate
-        elif line_contents[0] == '' and line_contents[1] != '' and STATE['SAME_SUBJECT'] and not STATE[
-            'SAME_PREDICATE']:
-            subject, predicate, object, obj_type, numerical_object = get_attributes(line_contents, predicate=None, subject=subject)
-
+        elif len(line_contents) == 3 and STATE['SAME_SUBJECT'] and not STATE['SAME_PREDICATE']:
+            subject, predicate, object, obj_type, numerical_object = get_attributes(line_contents, predicate=None,
+                                                                                    subject=subject)
         else:
             print "Syntax error - Invalid use of end-line token (expected a different end line token than the one given). \nRefer to line containing '%s'" % (
                 '\t').join(line_contents).strip('\n')
@@ -95,6 +111,43 @@ def parse_file(lines):
     return
 
 
+def join_literal(line_contents):
+    """
+    There are likely spaces in the literals given in RDF data, but since we split the lines by spaces
+    the literal will be broken up. This method joins the literal back together.
+    :param line_contents: the space separated line in array form
+    :return: the line contents with literals joined at the spaces
+    """
+    start_index = None
+    end_index = None
+    for i in range(len(line_contents)):
+        if '"' in line_contents[i] and line_contents[i].count('"') == 1:
+            if start_index == None and end_index == None:
+                start_index = i
+            elif start_index != None and end_index == None:
+                end_index = i
+
+    if start_index == None and end_index == None:
+        return line_contents
+
+    obj = ''
+    for j in range(start_index, end_index + 1):
+        obj += '%s ' % line_contents[j]
+
+    array_result = []
+    for k in range(len(line_contents)):
+        if k < start_index:
+            array_result.append(line_contents[k])
+        elif k == start_index:
+            array_result.append(obj.strip())
+        elif start_index < k <= end_index:
+            continue
+        else:
+            array_result.append(line_contents[k])
+
+    return array_result
+
+
 def get_attributes(line_contents, predicate, subject):
     """
     based on the line being parsed, the appropriate DB ready attributes are generated
@@ -103,7 +156,7 @@ def get_attributes(line_contents, predicate, subject):
     :param subject: The current subject resource that applies to the line being parsed. AKA the context of the line
     :return: the attributes ready to be inserted into DB
     """
-    object = None
+    object = None  # initialization
 
     if not subject:  # Then new subject being encountered
         subject = get_url_syntax(line_contents[0])
@@ -116,48 +169,38 @@ def get_attributes(line_contents, predicate, subject):
             predicate = translate_tag(line_contents[1])
 
     if subject and not predicate:
-        predicate = get_url_syntax(line_contents[1])
+        predicate = get_url_syntax(line_contents[0])
         if not predicate:
-            predicate = translate_tag(line_contents[1])
+            predicate = translate_tag(line_contents[0])
 
-    end_line_token = line_contents[2][-2]  # -2 index because last character is newline character
+    end_line_token = line_contents[-1]
+
+    object = get_url_syntax(line_contents[-2])
 
     if end_line_token == ',':  # new object under same predicate and subject
-        object = get_url_syntax(line_contents[2])
         if not object:  # Then object is in prefix form
-            object_with_prefix = strip_end_line(line_contents[2], token=',')
+            object_with_prefix = line_contents[-2]
 
         STATE['SAME_SUBJECT'] = True
         STATE['SAME_PREDICATE'] = True
 
     elif end_line_token == '.':
-        object = get_url_syntax(line_contents[2])
         if not object:
-            object_with_prefix = strip_end_line(line_contents[2], token='.')
+            object_with_prefix = line_contents[-2]
 
         STATE['SAME_SUBJECT'] = False
         STATE['SAME_PREDICATE'] = False
 
     elif end_line_token == ';':  # new predicate
-        object = get_url_syntax(line_contents[2])
         if not object:
-            object_with_prefix = strip_end_line(line_contents[2], token=';')
+            object_with_prefix = line_contents[-2]
 
         STATE['SAME_SUBJECT'] = True
         STATE['SAME_PREDICATE'] = False
 
     else:
-        if line_contents[2][-1] == '.':  # Then we have the last line in the file
-            object = get_url_syntax(line_contents[2])
-            if not object:
-                object_with_prefix = re.search("^[^.]*", line_contents[
-                    2]).group()
-
-            STATE['SAME_SUBJECT'] = False
-            STATE['SAME_PREDICATE'] = False
-        else:
-            print ("invalid or missing identifier at end of line")
-            sys.exit(1)
+        print ("invalid or missing identifier at end of line")
+        sys.exit(1)
 
     # handle prefix tags with other data
     if not object:
@@ -170,24 +213,6 @@ def get_attributes(line_contents, predicate, subject):
     object, obj_type, numerical_object = determine_type(object)
 
     return subject, predicate, object, obj_type, numerical_object
-
-
-def strip_end_line(object, token):
-    """
-    strips the trailing token from a line
-    from: http://stackoverflow.com/questions/4664850/find-all-occurrences-of-a-substring-in-python
-    :param object: object string for object to be stripped
-    :param token: the character token to be stripped
-    :return: trimmed object
-    """
-    last_instance_index = [m.start() for m in re.finditer(token, object)][-1]
-    if object[last_instance_index - 1] == ' ' and object[last_instance_index + 1] == '\n':
-        object = object[:last_instance_index].strip()
-    else:
-        print "invalid line ending"
-        sys.exit(1)
-
-    return object
 
 
 def determine_type(object):
@@ -268,9 +293,13 @@ def add_prefix(prefix):
     will add the key/value pair (key = rdf, value = http://www.w3.org/1999/02/22-rdf-syntax-ns#) to the PREFIX_URL
     dictionary
     """
-    prefix_contents = prefix.group(1).split('\t')
-    if len(prefix_contents) != 2:
+    prefix_contents = prefix.group(1).strip().split()
+
+    if len(prefix_contents) != 3:
         print "Invalid prefix tag in input file"
+        sys.exit(1)
+    if prefix_contents[2] != '.':
+        print "Prefix line must end with a '.' not '%s'" % prefix_contents[2]
         sys.exit(1)
 
     # this gets the url of the prefix tag. http://stackoverflow.com/questions/4894069/regular-expression-to-return-text-between-parenthesis
@@ -282,8 +311,7 @@ def add_prefix(prefix):
 
 def insert_data(db):
     """
-    function that inserts the data to DB.
-    One bulk DB insert for efficiency. and only after checking there are no errors
+    function that inserts the data to DB in a bulk insert.
 
     from: https://docs.python.org/2/library/sqlite3.html
     :param db: database instance
@@ -291,11 +319,14 @@ def insert_data(db):
 
     cursor = db.cursor()
     if cursor:
-        for triple in DB_DATA:
-            print triple
-        print len(DB_DATA)
-        # cursor.executemany('INSERT INTO graph_data VALUES (?,?,?,?,?)', DB_DATA)
-        # db.commit()
+        # for triple in DB_DATA:
+        #     print triple
+        # print len(DB_DATA)
+        cursor.executemany('INSERT INTO graph_data VALUES (?,?,?,?,?)', DB_DATA)
+        db.commit()
+    else:
+        print 'Something went wrong while creator DB cursor!'
+        sys.exit(1)
 
     return
 
@@ -306,14 +337,12 @@ def is_english(object):
     :param object: the term to check for english qualities
     :return: object ready for
     """
-
     language_tag = re.search("@[a-z]*", object)
     if language_tag:
         if language_tag.group() != "@en":
             return None  # Was another language
         else:
             object = object.replace("@en", '')
-
     return object
 
 
