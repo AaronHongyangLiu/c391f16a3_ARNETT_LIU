@@ -27,11 +27,12 @@ def main():
 
     print(query)
 
-    # conn = sqlite3.connect(sys.argv[1])  # connection to the database
-    # c = conn.cursor()  # cursor
-    # conn.create_function("convert",1,convert)
-    # c.execute(query)
-    # print(c.fetchall())
+    conn = sqlite3.connect(sys.argv[1])  # connection to the database
+    c = conn.cursor()  # cursor
+    conn.create_function("convert",1,convert)
+    c.execute(query)
+    print(c.fetchall())
+    conn.close()
 
 
 def convert(value):
@@ -196,13 +197,13 @@ def readPattern(pattern):
     :param pattern: a list as [subj, pred, obej] pattern
     """
 
-    query_template = {(0,): ("subject as %s", '''predicate = "%s" and object = "%s"''', "predicate_object_index"),
-                      (1,): ("predicate as %s", '''subject = "%s" and object = "%s"''', "subject_object_index"),
+    query_template = {(0,): ("subject as %s ", '''predicate = "%s" and object = "%s"''', "predicate_object_index"),
+                      (1,): ("predicate as %s ", '''subject = "%s" and object = "%s"''', "subject_object_index"),
                       (2,): (
-                      "convert(object) as %s", '''subject = "%s" and predicate = "%s"''', "subject_predicate_index"),
-                      (0, 1): ("subject as %s, predicate as %s", '''object = "%s"''', "object_index"),
-                      (0, 2): ("subject as %s, convert(object) as %s", '''predicate = "%s"''', "predicate_index"),
-                      (1, 2): ("predicate as %s, convert(object) as %s", '''subject = "%s"''', "subject_index")}
+                      "convert(object) as %s ", '''subject = "%s" and predicate = "%s"''', "subject_predicate_index"),
+                      (0, 1): ("subject as %s , predicate as %s ", '''object = "%s"''', "object_index"),
+                      (0, 2): ("subject as %s , convert(object) as %s ", '''predicate = "%s"''', "predicate_index"),
+                      (1, 2): ("predicate as %s , convert(object) as %s ", '''subject = "%s"''', "subject_index")}
 
     if pattern[2][-1] == ".":
         pattern[2] = pattern[2][:-1]
@@ -253,9 +254,10 @@ def buildQuery():
             if not current_vars.isdisjoint(set(variables)):
                 common_vars = tuple(current_vars.intersection(set(variables)))
                 current_vars = current_vars.union(set(variables))
-                query = "SELECT * \nFROM (\n(%s) \nJOIN \n(%s) \nUSING " % (query, SUB_QUERIES[i])
-                query += "%s," * (len(common_vars) - 1)
-                query += "%s)\n" % common_vars
+                query = "SELECT * \nFROM (\n(%s) \nNATURAL JOIN \n(%s) )\n " % (query, SUB_QUERIES[i])
+                #query += "%s," * (len(common_vars) - 1)
+                #query += "%s)\n" % common_vars
+
                 used.append(i)
 
     # output those needed:
