@@ -25,13 +25,25 @@ def main():
     input_lines = reformat(whole_file)
     query = parseFile(input_lines)
 
-    print(query)
+    #print(query)
 
     conn = sqlite3.connect(sys.argv[1])  # connection to the database
     c = conn.cursor()  # cursor
     conn.create_function("convert",1,convert)
     c.execute(query)
-    print(c.fetchall())
+    result = c.fetchall()
+
+    for i in range(len(OUTPUT_VAR)):
+        if i != (len(OUTPUT_VAR)-1):
+            print("|%-50s" % OUTPUT_VAR[i])
+        else:
+            print("|%-50s|" % OUTPUT_VAR[i])
+    for rows in result:
+        for i in range(len(OUTPUT_VAR)):
+            if i != (len(OUTPUT_VAR)-1):
+                print("|%-50s" % rows[i])
+            else:
+                print("|%-50s|"  % rows[i])
     conn.close()
 
 
@@ -252,7 +264,7 @@ def buildQuery():
         for i in range(len(keys)):
             variables = keys[i]
             if not current_vars.isdisjoint(set(variables)):
-                common_vars = tuple(current_vars.intersection(set(variables)))
+                #common_vars = tuple(current_vars.intersection(set(variables)))
                 current_vars = current_vars.union(set(variables))
                 query = "SELECT * \nFROM (\n(%s) \nNATURAL JOIN \n(%s) )\n " % (query, SUB_QUERIES[i])
                 #query += "%s," * (len(common_vars) - 1)
@@ -270,6 +282,9 @@ def buildQuery():
         if not current_vars.issuperset(set(OUTPUT_VAR)):
             print("At least one of the output var is not in the where clause, out:", OUTPUT_VAR, "where:", current_vars)
             sys.exit()
+    else:
+        OUTPUT_VAR.pop()
+        OUTPUT_VAR.extend(current_vars)
 
     if len(FILTERS) != 0:
         query += " \nWHERE "
