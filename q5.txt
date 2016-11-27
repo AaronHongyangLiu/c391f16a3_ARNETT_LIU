@@ -1,0 +1,14 @@
+PREFIX dbr: <http://dbpedia.org/resource/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX dbo: <http://dbpedia.org/ontology/>
+PREFIX schema: <http://schema.org/>
+
+SELECT ?city (?popu/count(?hospital) as ?ratio)  WHERE {
+  ?city rdf:type schema:City .
+  ?hospital rdf:type schema:Hospital .
+  
+  ?city dbo:isPartOf dbr:Alberta .
+  ?hospital dbo:region ?city .
+  
+  ?city dbo:populationTotal ?popu
+} order by DESC (?ratio)
