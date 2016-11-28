@@ -1,0 +1,16 @@
+PREFIX dbo: <http://dbpedia.org/ontology/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX dct: <http://purl.org/dc/terms/>
+PREFIX dbp: <http://dbpedia.org/property/>
+PREFIX dbc: <http://dbpedia.org/resource/Category:>
+
+SELECT ?team (COUNT (?finals) as ?final_appearances) WHERE {
+
+  ?team rdf:type dbo:SportsTeam .
+
+  ?finals dct:subject dbc:FIFA_World_Cup_finals .
+  ?finals dbo:team ?team
+}
+GROUP BY ?team
+HAVING (COUNT(?team) > 3)
+ORDER BY DESC (?final_appearances)
