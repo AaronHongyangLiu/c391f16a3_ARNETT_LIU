@@ -26,6 +26,8 @@ def main():
     input_lines = reformat(whole_file)
     query = parseFile(input_lines)
 
+    print(query)
+
     conn = sqlite3.connect(sys.argv[1])  # connection to the database
     c = conn.cursor()  # cursor
     conn.create_function("convert",1,convert)
@@ -288,15 +290,20 @@ def buildQuery():
         s += "%s "
         query = ("SELECT %s" % s) % tuple(OUTPUT_VAR) + "\nFROM ( " + query + ")"
 
-        # check error
+        # check error for selected vars
         if not current_vars.issuperset(set(OUTPUT_VAR)):
             print("At least one of the output var is not in the where clause, out:", OUTPUT_VAR, "where:", current_vars)
-            sys.exit()
+            sys.exit(1)
     else:
         OUTPUT_VAR.pop()
         OUTPUT_VAR.extend(current_vars)
 
     if len(FILTERS) != 0:
+        # check error in the filter
+        if not current_vars.issuperset(set(FILTER_VAR)):
+            print("At least one of the filter var is not in the where clause, filter:", FILTER_VAR, "we have:", current_vars)
+            sys.exit(1)
+
         query += " \nWHERE "
         for i in range(len(FILTERS)):
             if i == 0:
