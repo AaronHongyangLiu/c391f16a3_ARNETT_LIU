@@ -10,10 +10,7 @@ CREATE INDEX subject_predicate_index ON graph_data(subject, predicate);
 
 CREATE INDEX predicate_object_index ON graph_data(predicate, object);
 
--- these indexes were created to speed up query searching the RDF data in the layout of our DB.
--- For example, to execute a query with < where subject = "prediction" >, we can use the subject_index
---              to execute a query with < where subject = "prediction1" and predicate = "prediction2" >, we can use the subject_predicate_index
-
-TODO better explanation
--- The indexes created on the individual columns will help in searching for results matching the SELECT clause.
--- indexes were created for the subject, predicate and object columns, to speed u
+-- these indexes were created to speed up query searching the RDF data with the schema of our DB.
+-- For example, to execute a query with  [where subject = "prediction"] we can use the subject_index
+--              to execute a query with  [where subject = "prediction1" and predicate = "prediction2"] we can use the subject_predicate_index
+-- We have 6 different indices on the graph_data, with different combinations of the columns that will be accessed most commonly.
