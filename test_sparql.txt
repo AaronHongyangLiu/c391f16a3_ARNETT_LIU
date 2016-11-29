@@ -2,7 +2,10 @@ PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 PREFIX schema: <http://schema.org/>
 PREFIX dbr: <http://dbpedia.org/resource/>
 PREFIX dbo: <http://dbpedia.org/ontology/>
+prefix dbp: <http://dbpedia.org/property/>
 SELECT * WHERE {
     ?city rdf:type schema:City .
-  	?city dbo:country dbr:Canada .
+    ?city dbo:country dbr:Canada .
+    ?city dbp:populationTotal ?var
+    FILTER(?var > 1000)
 }

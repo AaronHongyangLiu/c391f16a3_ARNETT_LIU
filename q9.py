@@ -1,3 +1,4 @@
+from __future__ import print_function
 import sqlite3
 import sys
 
@@ -25,7 +26,7 @@ def main():
     input_lines = reformat(whole_file)
     query = parseFile(input_lines)
 
-    #print(query)
+    print(query)
 
     conn = sqlite3.connect(sys.argv[1])  # connection to the database
     c = conn.cursor()  # cursor
@@ -35,13 +36,14 @@ def main():
 
     for i in range(len(OUTPUT_VAR)):
         if i != (len(OUTPUT_VAR)-1):
-            print("|%-50s" % OUTPUT_VAR[i])
+            print("{:_^51}".format(OUTPUT_VAR[i]),end="")
         else:
-            print("|%-50s|" % OUTPUT_VAR[i])
+            print("{:_^51}".format(OUTPUT_VAR[i]))
+
     for rows in result:
         for i in range(len(OUTPUT_VAR)):
             if i != (len(OUTPUT_VAR)-1):
-                print("|%-50s" % rows[i])
+                print("|%-50s" % rows[i], end="")
             else:
                 print("|%-50s|"  % rows[i])
     conn.close()
@@ -75,7 +77,6 @@ def reformat(string):
     :param string: all the characters in the input file
     :return: a list of each line in the formatted file
     """
-    # TODO: will the select and ?var in different lines?
 
     # changes #3
     select_index = string.upper().index("\nSELECT") + 6
@@ -160,7 +161,9 @@ def addFilter(tokens):
     add the filter line to the global variable
     :param tokens: all the token in the filter line
     """
-    filter_line = "".join(tokens)
+    
+    filter_line = join_literal(tokens)
+    filter_line = "".join(filter_line)
     variable_start = filter_line.find("?")
     var_name = ""
     variable_end = variable_start
@@ -171,7 +174,7 @@ def addFilter(tokens):
         else:
             break
     FILTER_VAR.append(var_name)
-    if "regex" in filter_line:
+    if "REGEX" in filter_line.upper():
 
         first_quote = filter_line.find('''"''')
         if first_quote > 0:
@@ -184,7 +187,7 @@ def addFilter(tokens):
             second_quote = filter_line.find("'", first_quote + 1)
         target_string = filter_line[first_quote + 1:second_quote]
 
-        FILTERS.append('''%s = "%s"''' % (var_name, target_string))
+        FILTERS.append("""%s = '"%s"'""" % (var_name, target_string))
     else:
         # it has to be a number
         filter_line = filter_line[:variable_start + 1] + filter_line[variable_end + 1:]
@@ -200,7 +203,7 @@ def addFilter(tokens):
                 operation = op
                 break
         filter_line.find("!")
-        FILTERS.append("%s %s %s" % (var_name, operation, number))
+        FILTERS.append("%s %s %s and (%s_type=='int' or %s_type=='float') " % (var_name, operation, number,var_name,var_name))
 
 
 def readPattern(pattern):
@@ -212,10 +215,12 @@ def readPattern(pattern):
     query_template = {(0,): ("subject as %s ", '''predicate = "%s" and object = "%s"''', "predicate_object_index"),
                       (1,): ("predicate as %s ", '''subject = "%s" and object = "%s"''', "subject_object_index"),
                       (2,): (
-                      "convert(object) as %s ", '''subject = "%s" and predicate = "%s"''', "subject_predicate_index"),
+                      "convert(object) as %s , type as %s_type ", '''subject = "%s" and predicate = "%s"''', "subject_predicate_index"),
                       (0, 1): ("subject as %s , predicate as %s ", '''object = "%s"''', "object_index"),
-                      (0, 2): ("subject as %s , convert(object) as %s ", '''predicate = "%s"''', "predicate_index"),
-                      (1, 2): ("predicate as %s , convert(object) as %s ", '''subject = "%s"''', "subject_index")}
+                      (0, 2): ("subject as %s , convert(object) as %s , type as %s_type ", '''predicate = "%s"''', "predicate_index"),
+                      (1, 2): ("predicate as %s , convert(object) as %s , type as %s_type ", '''subject = "%s"''', "subject_index"),
+                      (0, 1, 2): "subject as %s ,predicate as %s , convert(object) as %s , type as %s_type "}
+                      
 
     if pattern[2][-1] == ".":
         pattern[2] = pattern[2][:-1]
@@ -241,11 +246,18 @@ def readPattern(pattern):
             conditions.append(pattern[i])
     template_number = tuple(template_number)
 
-    query = "SELECT DISTINCT %s \nFROM graph_data INDEXED BY %s \nWHERE %s " \
-            % (query_template[template_number][0] % tuple(variables),
-               query_template[template_number][2],
-               query_template[template_number][1] % tuple(conditions))
-
+    inputVar = []
+    inputVar.extend(variables)
+    if 2 in template_number:
+        inputVar.append(variables[-1])
+    
+    if template_number != (0,1,2):
+        query = "SELECT DISTINCT %s \nFROM graph_data INDEXED BY %s \nWHERE %s " \
+                % (query_template[template_number][0] % tuple(inputVar),
+                   query_template[template_number][2],
+                   query_template[template_number][1] % tuple(conditions))
+    else:
+        query = "SELECT DISTINCT %s \nFROM graph_data" % (query_template[template_number] % tuple(inputVar))
     SUB_VARS.append(variables)
     SUB_QUERIES.append(query)
 
@@ -278,15 +290,20 @@ def buildQuery():
         s += "%s "
         query = ("SELECT %s" % s) % tuple(OUTPUT_VAR) + "\nFROM ( " + query + ")"
 
-        # check error
+        # check error for selected vars
         if not current_vars.issuperset(set(OUTPUT_VAR)):
             print("At least one of the output var is not in the where clause, out:", OUTPUT_VAR, "where:", current_vars)
-            sys.exit()
+            sys.exit(1)
     else:
         OUTPUT_VAR.pop()
         OUTPUT_VAR.extend(current_vars)
 
     if len(FILTERS) != 0:
+        # check error in the filter
+        if not current_vars.issuperset(set(FILTER_VAR)):
+            print("At least one of the filter var is not in the where clause, filter:", FILTER_VAR, "we have:", current_vars)
+            sys.exit(1)
+
         query += " \nWHERE "
         for i in range(len(FILTERS)):
             if i == 0:
@@ -297,6 +314,41 @@ def buildQuery():
     query += ";"
     return query
 
+def join_literal(line_contents):
+    """
+    There are likely spaces in the literals given in RDF data, but since we split the lines by spaces
+    the literal will be broken up. This method joins the literal back together.
+    :param line_contents: the space separated line in array form
+    :return: the line contents with literals joined at the spaces
+    """
+    start_index = None
+    end_index = None
+    for i in range(len(line_contents)):
+        if '"' in line_contents[i] and line_contents[i].count('"') == 1:
+            if start_index == None and end_index == None:
+                start_index = i
+            elif start_index != None and end_index == None:
+                end_index = i
+
+    if start_index == None and end_index == None:
+        return line_contents
+
+    obj = ''
+    for j in range(start_index, end_index + 1):
+        obj += '%s ' % line_contents[j]
+
+    array_result = []
+    for k in range(len(line_contents)):
+        if k < start_index:
+            array_result.append(line_contents[k])
+        elif k == start_index:
+            array_result.append(obj.strip())
+        elif start_index < k <= end_index:
+            continue
+        else:
+            array_result.append(line_contents[k])
+
+    return array_result
 
 if __name__ == "__main__":
     main()
