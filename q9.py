@@ -26,8 +26,6 @@ def main():
     input_lines = reformat(whole_file)
     query = parseFile(input_lines)
 
-    print(query)
-
     conn = sqlite3.connect(sys.argv[1])  # connection to the database
     c = conn.cursor()  # cursor
     conn.create_function("convert",1,convert)
@@ -36,9 +34,9 @@ def main():
 
     for i in range(len(OUTPUT_VAR)):
         if i != (len(OUTPUT_VAR)-1):
-            print("{:_^50}".format(OUTPUT_VAR[i]),end="")
+            print("{:_^51}".format(OUTPUT_VAR[i]),end="")
         else:
-            print("{:_^50}".format(OUTPUT_VAR[i]))
+            print("{:_^51}".format(OUTPUT_VAR[i]))
 
     for rows in result:
         for i in range(len(OUTPUT_VAR)):
@@ -203,7 +201,7 @@ def addFilter(tokens):
                 operation = op
                 break
         filter_line.find("!")
-        FILTERS.append("%s %s %s" % (var_name, operation, number))
+        FILTERS.append("%s %s %s and (%s_type=='int' or %s_type=='float') " % (var_name, operation, number,var_name,var_name))
 
 
 def readPattern(pattern):
@@ -215,11 +213,11 @@ def readPattern(pattern):
     query_template = {(0,): ("subject as %s ", '''predicate = "%s" and object = "%s"''', "predicate_object_index"),
                       (1,): ("predicate as %s ", '''subject = "%s" and object = "%s"''', "subject_object_index"),
                       (2,): (
-                      "convert(object) as %s ", '''subject = "%s" and predicate = "%s"''', "subject_predicate_index"),
+                      "convert(object) as %s , type as %s_type ", '''subject = "%s" and predicate = "%s"''', "subject_predicate_index"),
                       (0, 1): ("subject as %s , predicate as %s ", '''object = "%s"''', "object_index"),
-                      (0, 2): ("subject as %s , convert(object) as %s ", '''predicate = "%s"''', "predicate_index"),
-                      (1, 2): ("predicate as %s , convert(object) as %s ", '''subject = "%s"''', "subject_index"),
-                      (0, 1, 2): "subject as %s ,predicate as %s , convert(object) as %s "}
+                      (0, 2): ("subject as %s , convert(object) as %s , type as %s_type ", '''predicate = "%s"''', "predicate_index"),
+                      (1, 2): ("predicate as %s , convert(object) as %s , type as %s_type ", '''subject = "%s"''', "subject_index"),
+                      (0, 1, 2): "subject as %s ,predicate as %s , convert(object) as %s , type as %s_type "}
                       
 
     if pattern[2][-1] == ".":
@@ -245,14 +243,19 @@ def readPattern(pattern):
         else:
             conditions.append(pattern[i])
     template_number = tuple(template_number)
+
+    inputVar = []
+    inputVar.extend(variables)
+    if 2 in template_number:
+        inputVar.append(variables[-1])
     
     if template_number != (0,1,2):
         query = "SELECT DISTINCT %s \nFROM graph_data INDEXED BY %s \nWHERE %s " \
-                % (query_template[template_number][0] % tuple(variables),
+                % (query_template[template_number][0] % tuple(inputVar),
                    query_template[template_number][2],
                    query_template[template_number][1] % tuple(conditions))
     else:
-        query = "SELECT DISTINCT %s \nFROM graph_data" % (query_template[template_number] % tuple(variables))
+        query = "SELECT DISTINCT %s \nFROM graph_data" % (query_template[template_number] % tuple(inputVar))
     SUB_VARS.append(variables)
     SUB_QUERIES.append(query)
 
