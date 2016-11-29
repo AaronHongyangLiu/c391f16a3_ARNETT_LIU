@@ -163,9 +163,7 @@ def addFilter(tokens):
     """
     
     filter_line = join_literal(tokens)
-    print(filter_line)
     filter_line = "".join(filter_line)
-    print(filter_line)
     variable_start = filter_line.find("?")
     var_name = ""
     variable_end = variable_start
@@ -220,7 +218,8 @@ def readPattern(pattern):
                       "convert(object) as %s ", '''subject = "%s" and predicate = "%s"''', "subject_predicate_index"),
                       (0, 1): ("subject as %s , predicate as %s ", '''object = "%s"''', "object_index"),
                       (0, 2): ("subject as %s , convert(object) as %s ", '''predicate = "%s"''', "predicate_index"),
-                      (1, 2): ("predicate as %s , convert(object) as %s ", '''subject = "%s"''', "subject_index")}
+                      (1, 2): ("predicate as %s , convert(object) as %s ", '''subject = "%s"''', "subject_index"),
+                      (0, 1, 2): "subject as %s ,predicate as %s , convert(object) as %s "}
                       
 
     if pattern[2][-1] == ".":
@@ -246,12 +245,14 @@ def readPattern(pattern):
         else:
             conditions.append(pattern[i])
     template_number = tuple(template_number)
-
-    query = "SELECT DISTINCT %s \nFROM graph_data INDEXED BY %s \nWHERE %s " \
-            % (query_template[template_number][0] % tuple(variables),
-               query_template[template_number][2],
-               query_template[template_number][1] % tuple(conditions))
-
+    
+    if template_number != (0,1,2):
+        query = "SELECT DISTINCT %s \nFROM graph_data INDEXED BY %s \nWHERE %s " \
+                % (query_template[template_number][0] % tuple(variables),
+                   query_template[template_number][2],
+                   query_template[template_number][1] % tuple(conditions))
+    else:
+        query = "SELECT DISTINCT %s \nFROM graph_data" % (query_template[template_number] % tuple(variables))
     SUB_VARS.append(variables)
     SUB_QUERIES.append(query)
 
