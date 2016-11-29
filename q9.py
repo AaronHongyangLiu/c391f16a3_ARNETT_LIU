@@ -26,7 +26,7 @@ def main():
     input_lines = reformat(whole_file)
     query = parseFile(input_lines)
 
-    print(query)
+    #print(query)
 
     conn = sqlite3.connect(sys.argv[1])  # connection to the database
     c = conn.cursor()  # cursor
@@ -194,7 +194,7 @@ def addFilter(tokens):
         number = ""
         operation = ""
         for char in filter_line:
-            if char.isnumeric() or char == ".":
+            if char.isdigit() or char == ".":
                 number += char
 
         operations = ["!=", ">=", "<=", "=", ">", "<"]

@@ -4,7 +4,7 @@ PREFIX dct: <http://purl.org/dc/terms/>
 PREFIX dbp: <http://dbpedia.org/property/>
 PREFIX dbc: <http://dbpedia.org/resource/Category:>
 
-SELECT ?team (COUNT (?finals) as ?final_appearances) WHERE {
+SELECT ?team (COUNT (DISTINCT ?finals) as ?final_appearances) WHERE {
 
   ?team rdf:type dbo:SportsTeam .
 

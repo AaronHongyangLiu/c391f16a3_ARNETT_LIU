@@ -4,7 +4,7 @@ PREFIX dct: <http://purl.org/dc/terms/>
 PREFIX dbc: <http://dbpedia.org/resource/Category:>
 PREFIX dbp: <http://dbpedia.org/property/>
 PREFIX dbo: <http://dbpedia.org/ontology/>
-SELECT ?SouthAmericanCountries (COUNT(?la_liga_player) as ?number_of_players) WHERE {
+SELECT ?SouthAmericanCountries (COUNT(DISTINCT ?la_liga_player) as ?number_of_players) WHERE {
 
   ?SouthAmericanCountries rdf:type schema:Country .
   ?SouthAmericanCountries dct:subject dbc:Countries_in_South_America .
@@ -17,7 +17,6 @@ SELECT ?SouthAmericanCountries (COUNT(?la_liga_player) as ?number_of_players) WH
   ?club dct:subject dbc:La_Liga_clubs .
   ?club dct:subject dbc:Unrelegated_association_football_clubs .
 
-  ?birthPlace rdf:type schema:City .
   ?birthPlace dbo:country ?SouthAmericanCountries .
 }
 GROUP BY ?SouthAmericanCountries
