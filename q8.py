@@ -12,6 +12,7 @@ STATE = {
 }
 
 END_LINE_TOKENS = ['.', ',', ';']
+BASE_URL = None
 
 
 def main():
@@ -60,27 +61,8 @@ def parse_file(lines):
                 line.strip('\n')[-1], END_LINE_TOKENS)
             sys.exit(1)
 
-        # check if prefix declaration line
-        prefix_rdf = re.search("(?:)@prefix(.*)", line)  # https://docs.python.org/2/howto/regex.html
-        prefix_sparql = re.search("(?:)PREFIX(.*)", line)
-
-        if prefix_rdf:
-            if not STATE['SAME_PREDICATE'] and not STATE[
-                'SAME_SUBJECT']:  # Checks if previous line has '.' endline token
-                add_prefix(prefix_rdf)
-                continue
-            else:
-                print "Syntax error - Invalid use of end-line token (expected a different end line token than the one given). \nRefer to line containing '%s'" % (
-                    '\t').join(line_contents).strip('\n')
-                sys.exit(1)
-        elif prefix_sparql:
-            if not STATE['SAME_PREDICATE'] and not STATE['SAME_SUBJECT']:
-                add_prefix(prefix_sparql)
-                continue
-            else:
-                print "Syntax error - Invalid use of end-line token (expected a different end line token than the one given). \nRefer to line containing '%s'" % (
-                    '\t').join(line_contents).strip('\n')
-                sys.exit(1)
+        if iri_exists(line):
+            continue
 
         line_contents = line.split()
         line_contents = join_literal(line_contents)
@@ -110,6 +92,51 @@ def parse_file(lines):
 
     return
 
+
+def iri_exists(line):
+    """
+    This function checks a line to see if it contain an IRI. If there is an IRI then it will assign
+    it to the global variable.
+    :param line: The line to check for IRI
+    :return: False if no IRI, True if contains IRI
+    """
+    # check if prefix declaration line
+    prefix_rdf = re.search("(?:^)@prefix(.*)", line)  # https://docs.python.org/2/howto/regex.html
+    prefix_sparql = re.search("(?:^)PREFIX(.*)", line)
+    base_rdf = re.search("(?:^)@base(.*)", line)
+    base_sparql = re.search("(?:^)BASE(.*)", line)
+
+    prefix_types = [prefix_rdf, prefix_sparql]
+    base_types = [base_rdf, base_sparql]
+
+    prefix = None
+    base = None
+    if any(prefix_types):
+        for r in prefix_types:
+            if r:
+                prefix = r
+        if not STATE['SAME_PREDICATE'] and not STATE['SAME_SUBJECT']:  # Checks if previous line has '.' endline token
+            add_prefix(prefix)
+            return True
+        else:
+            print "Syntax error - Invalid use of end-line token (expected a different end line token than the one given). \nRefer to line containing '%s'" % (
+                '\t').join(line).strip('\n')
+            sys.exit(1)
+
+    elif any(base_types):
+        for b in base_types:
+            if b:
+                base = b
+
+        if not STATE['SAME_PREDICATE'] and not STATE['SAME_SUBJECT']:  # Checks if previous line has '.' endline token
+            add_base(base)
+            return True
+        else:
+            print "Syntax error - Invalid use of end-line token (expected a different end line token than the one given). \nRefer to line containing '%s'" % (
+                '\t').join(line).strip('\n')
+            sys.exit(1)
+    else:
+        return False  # Doesn't contains any IRI's in line
 
 def join_literal(line_contents):
     """
@@ -256,12 +283,16 @@ def determine_type(object):
 
 def get_url_syntax(object):
     """
-    determines if object is given in prefix form or url form. If in url form it returns the url, otherwise returns None
+    determines if object is given in URI form or url form. If in url or IRI form it returns the url,
+    otherwise returns None
     :return: objects url if input is url form, otherwise None
     """
     if "<" in object and ">" in object:
-        return object[object.find("<") + 1:object.find(">")]
+        object = object[object.find("<") + 1:object.find(">")]
+        if "http://" not in object:
+            object = "%s%s" % (BASE_URL, object)
 
+        return object
     return None
 
 
@@ -286,6 +317,28 @@ def translate_tag(tag):
     result = "%s%s" % (PREFIX_URL[tag_contents[0]], tag_contents[1])
     return result
 
+
+def add_base(base):
+    """
+    given a string with a base IRI (ex. <http://one.example/> this function
+    will add the IRI to the global BASE_URL variable.
+    """
+    global BASE_URL
+    base_contents = base.group(1).strip().split()
+
+    if len(base_contents) != 2:
+        print "Invalid base IRI tag in input file"
+        sys.exit(1)
+    if base_contents[1] != '.':
+        print "Prefix line must end with a '.' not '%s'" % base_contents[1]
+        sys.exit(1)
+
+    # this gets the url of the prefix tag. http://stackoverflow.com/questions/4894069/regular-expression-to-return-text-between-parenthesis
+    url = base_contents[0][base_contents[0].find("<") + 1:base_contents[0].find(
+        ">")]
+
+    BASE_URL = url
+    return
 
 def add_prefix(prefix):
     """
@@ -325,7 +378,7 @@ def insert_data(db):
         cursor.executemany('INSERT INTO graph_data VALUES (?,?,?,?,?)', DB_DATA)
         db.commit()
     else:
-        print 'Something went wrong while creator DB cursor!'
+        print 'Something went wrong while creating the DB cursor!'
         sys.exit(1)
 
     return
