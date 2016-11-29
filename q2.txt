@@ -1,1 +1,13 @@
--- http://dbpedia.org/fct/
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX dbo: <http://dbpedia.org/ontology/>
+PREFIX dbr: <http://dbpedia.org/resource/>
+PREFIX dbp: <http://dbpedia.org/property/>
+
+SELECT DISTINCT ?airport ?city WHERE {
+  ?airport rdf:type dbo:Airport .
+  ?airport dbo:city ?city .
+  ?city dbo:country dbr:Canada .
+  ?airport dbp:name ?name .
+  FILTER (regex(?name, "International", "i"))
+  
+}
