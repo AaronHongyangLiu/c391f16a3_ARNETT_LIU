@@ -16,7 +16,7 @@ FILTER_VAR = []
 
 def main():
     if len(sys.argv) != 3:
-        print("Usage: python q8.py <database file> <SPARQL query file>")
+        print("Usage: python q9.py <database file> <SPARQL query file>")
         sys.exit()
 
     infile = open(sys.argv[2], 'r')  # read the SPARQL query file
