@@ -53,7 +53,7 @@ def parse_file(lines):
             line = line[:index].rstrip()
             line += '\n'  # add newline character to keep format consistent
 
-        if line == "\n":  # Ignore blank lines
+        if line.strip() == "":  # Ignore blank lines
             continue
 
         if line.strip('\n')[-1] not in END_LINE_TOKENS:
@@ -68,27 +68,26 @@ def parse_file(lines):
         line_contents = join_literal(line_contents)
 
         # generate new triple without any existing context
-        if len(line_contents) == 4:
-            subject, predicate, object, obj_type, numerical_object = get_attributes(line_contents, predicate=None,
+        if len(line_contents) == 4 and not STATE['SAME_SUBJECT'] and not STATE['SAME_PREDICATE']:
+            subject, predicate, object, obj_type = get_attributes(line_contents, predicate=None,
                                                                                     subject=None)
 
         # generate triple with existing subject and predicate
         elif len(line_contents) == 2 and STATE['SAME_SUBJECT'] and STATE['SAME_PREDICATE']:
-            subject, predicate, object, obj_type, numerical_object = get_attributes(line_contents, predicate=predicate,
-                                                                                    subject=subject)
+            subject, predicate, object, obj_type = get_attributes(line_contents, predicate=predicate,
+                                                                  subject=subject)
 
         # generate triple with existing subject but new predicate
         elif len(line_contents) == 3 and STATE['SAME_SUBJECT'] and not STATE['SAME_PREDICATE']:
-            subject, predicate, object, obj_type, numerical_object = get_attributes(line_contents, predicate=None,
-                                                                                    subject=subject)
+            subject, predicate, object, obj_type = get_attributes(line_contents, predicate=None,
+                                                                  subject=subject)
         else:
-            print "Syntax error - Invalid use of end-line token (expected a different end line token than the one given). \nRefer to line containing '%s'" % (
-                '\t').join(line_contents).strip('\n')
+            print "Syntax error - Invalid use of end-line token (expected a different end line token than the one given)."
             sys.exit(1)
 
         object = is_english(object)  # returns english object, or None if not english
         if object:
-            DB_DATA.append((subject, predicate, object, obj_type, numerical_object))
+            DB_DATA.append((subject, predicate, object, obj_type))
 
     return
 
@@ -119,8 +118,7 @@ def iri_exists(line):
             add_prefix(prefix)
             return True
         else:
-            print "Syntax error - Invalid use of end-line token (expected a different end line token than the one given). \nRefer to line containing '%s'" % (
-                '\t').join(line).strip('\n')
+            print "Syntax error - Invalid use of end-line token (expected a different end line token than the one given)."
             sys.exit(1)
 
     elif any(base_types):
@@ -132,11 +130,11 @@ def iri_exists(line):
             add_base(base)
             return True
         else:
-            print "Syntax error - Invalid use of end-line token (expected a different end line token than the one given). \nRefer to line containing '%s'" % (
-                '\t').join(line).strip('\n')
+            print "Syntax error - Invalid use of end-line token (expected a different end line token than the one given)."
             sys.exit(1)
     else:
         return False  # Doesn't contains any IRI's in line
+
 
 def join_literal(line_contents):
     """
@@ -184,8 +182,9 @@ def get_attributes(line_contents, predicate, subject):
     :return: the attributes ready to be inserted into DB
     """
     object = None  # initialization
+    global STATE
 
-    if not subject:  # Then new subject being encountered
+    if not subject and not STATE['SAME_SUBJECT']:  # Then new subject being encountered
         subject = get_url_syntax(line_contents[0])
         if not subject:  # Then in prefix form
             subject = translate_tag(line_contents[0])
@@ -195,7 +194,7 @@ def get_attributes(line_contents, predicate, subject):
         if not predicate:
             predicate = translate_tag(line_contents[1])
 
-    if subject and not predicate:
+    if subject and not predicate and STATE['SAME_SUBJECT'] and not STATE['SAME_PREDICATE']:
         predicate = get_url_syntax(line_contents[0])
         if not predicate:
             predicate = translate_tag(line_contents[0])
@@ -237,9 +236,9 @@ def get_attributes(line_contents, predicate, subject):
         else:  # Then we do not have a url
             object = object_with_prefix
 
-    object, obj_type, numerical_object = determine_type(object)
+    object, obj_type = determine_type(object)
 
-    return subject, predicate, object, obj_type, numerical_object
+    return subject, predicate, object, obj_type
 
 
 def determine_type(object):
@@ -252,10 +251,9 @@ def determine_type(object):
             object = "812201"
             object_type = http://www.w3.org/2001/XMLSchema#nonNegativeInteger
     :param object: the object whose type is to be determined
-    :return: object in string representation, a tag of it's type, and a numeric representation of the float/int type objects (otherwise None for string type objects)
+    :return: object in string representation, a tag of it's type
     """
     object_type = 'other'  # 'other' by default
-    numerical_object = None
 
     try:
         if "." in object:
@@ -276,9 +274,7 @@ def determine_type(object):
             object = object_contents[0]
             object_type = translate_tag(object_contents[1])
 
-            numerical_object = None
-
-    return object, object_type, numerical_object
+    return object, object_type
 
 
 def get_url_syntax(object):
@@ -375,7 +371,7 @@ def insert_data(db):
         # for triple in DB_DATA:
         #     print triple
         # print len(DB_DATA)
-        cursor.executemany('INSERT INTO graph_data VALUES (?,?,?,?,?)', DB_DATA)
+        cursor.executemany('INSERT INTO graph_data VALUES (?,?,?,?)', DB_DATA)
         db.commit()
     else:
         print 'Something went wrong while creating the DB cursor!'
