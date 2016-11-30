@@ -16,6 +16,7 @@ Question 8:
         python q8.py <database file> <RDF input file>
 
 Question 9:
+    - assume there's at least one variable in each triple in the where clause
     - assume that the SELECT and ?var will be in the same line
     - assume there is no || or &&
     - assume that the object with URI are not treated as numbers so they will not be shown when using numerical constraints.
